@@ -58,7 +58,7 @@ def sample_pointcloud(data_path, num_point, pc_attribs, pc_augm, pc_augm_config,
     data = data[sampled_point_inds]
     xyz = data[:, 0:3]
     rgb = data[:, 3:6]
-    labels = data[:,6].astype(np.int)
+    labels = data[:,6].astype(int)
 
     xyz_min = np.amin(xyz, axis=0)
     xyz -= xyz_min
