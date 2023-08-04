@@ -87,3 +87,6 @@ class ProtoLearner(object):
             accuracy = correct / (query_y.shape[0]*query_y.shape[1])
 
         return pred, loss, accuracy
+    
+
+        
