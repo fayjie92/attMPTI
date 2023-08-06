@@ -3,8 +3,11 @@
 Author: Zhao Na, 2020
 """
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_cluster import knn_graph
+from models.knn_graph import knn
 
 from models.dgcnn import DGCNN
 from models.attention import SelfAttention
@@ -44,6 +47,10 @@ class ProtoNet(nn.Module):
         self.in_channels = args.pc_in_dim
         self.n_points = args.pc_npts
         self.use_attention = args.use_attention
+        self.alpha = torch.tensor(0.99, requires_grad=False)
+        self.sigma = 0.25
+        self.k = args.dgcnn_k # treat it as k for knn in manifold
+        print(self.k)
 
         self.encoder = DGCNN(args.edgeconv_widths, args.dgcnn_mlp_widths, args.pc_in_dim, k=args.dgcnn_k)
         self.base_learner = BaseLearner(args.dgcnn_mlp_widths[-1], args.base_widths)
@@ -53,41 +60,72 @@ class ProtoNet(nn.Module):
         else:
             self.linear_mapper = nn.Conv1d(args.dgcnn_mlp_widths[-1], args.output_dim, 1, bias=False)
 
+    
     def forward(self, support_x, support_y, query_x, query_y):
         """
         Args:
-            support_x: support point clouds with shape (n_way, k_shot, in_channels, num_points)
-            support_y: support masks (foreground) with shape (n_way, k_shot, num_points)
-            query_x: query point clouds with shape (n_queries, in_channels, num_points)
-            query_y: query labels with shape (n_queries, num_points), each point \in {0,..., n_way}
+            support_x:  n_way x k_shot x in_channels x num_points  [support point cloud]
+            support_y:  n_way x k_shot x num_points [support labels]
+            query_x:    n_queries x in_channels x num_points [query point cloud]
+            query_y:    n_queries x num_points [query labels, each point \in {0,..., n_way}]
         Return:
-            query_pred: query point clouds predicted similarity, shape: (n_queries, n_way+1, num_points)
+            query_pred:   [predicted query point cloud]
         """
+
+        ### Manifold learning
+        # embeddings
         support_x = support_x.view(self.n_way*self.k_shot, self.in_channels, self.n_points)
         support_feat = self.getFeatures(support_x)
-        support_feat = support_feat.view(self.n_way, self.k_shot, -1, self.n_points)
-        query_feat = self.getFeatures(query_x) #(n_queries, feat_dim, num_points)
-
-        fg_mask = support_y
-        bg_mask = torch.logical_not(support_y)
-
-        support_fg_feat = self.getMaskedFeatures(support_feat, fg_mask)
-        suppoer_bg_feat = self.getMaskedFeatures(support_feat, bg_mask)
-
-        # prototype learning
-        fg_prototypes, bg_prototype = self.getPrototype(support_fg_feat, suppoer_bg_feat)
-        prototypes = [bg_prototype] + fg_prototypes
-
-        # non-parametric metric learning
-        similarity = [self.calculateSimilarity(query_feat, prototype, self.dist_method) for prototype in prototypes]
-
-        query_pred = torch.stack(similarity, dim=1) #(n_queries, n_way+1, num_points)
+        query_feat = self.getFeatures(query_x)
         
+        emb_all = torch.cat((support_feat, query_feat), 0)
+        # do we need this? yes. @UMA disucussion
+        emb_s = support_feat.view(-1, support_feat.shape[0] * support_feat.shape[2]) 
+        emb_q = query_feat.view(-1, query_feat.shape[0] * query_feat.shape[2])
+        emb_all = torch.cat((emb_s, emb_q), 1)
+        N, d = emb_all.shape[1], emb_all.shape[0]
+
+        # knn graph 
+        eps = np.finfo(float).eps
+        emb_all = emb_all.transpose(1, 0) / (self.sigma + eps)  # dxT -> Txd
+        emb1 = torch.unsqueeze(emb_all, 1)  # Tx1xd
+        emb2 = torch.unsqueeze(emb_all, 0)  # 1xTxd
+        W = ((emb1-emb2)**2).mean(2)  #  TxT 
+        W = torch.exp(-W/2)
+
+        # keep top-k values
+        topk, indices = torch.topk(W, self.k)
+        mask = torch.zeros_like(W)
+        mask = mask.scatter(1, indices, 1)
+        mask = ((mask+torch.t(mask))>0).type(torch.float32)
+        W = W*mask
+
+        # normalize
+        D = W.sum(0)
+        D_sqrt_inv = torch.sqrt(1.0/(D+eps))
+        D1 = torch.unsqueeze(D_sqrt_inv,1).repeat(1,N)
+        D2 = torch.unsqueeze(D_sqrt_inv,0).repeat(N,1)
+        S = D1*W*D2
+
+        # Label propagation, F = (I - \alpha S)^{-1}Y
+        ys = support_y.view(self.n_way * self.k_shot, -1)
+        yu = torch.zeros(query_y.shape[0], query_y.shape[1]).cuda()
+        y = torch.cat((ys, yu), 0)
+        F  = torch.matmul(torch.inverse(torch.eye(N).cuda(0)-self.alpha*S+eps), y.view(-1))
+        F = F.view(-1, support_x.shape[2])
+        Fq = F[4:, :]
+
+        # step4: Cross-Entropy Loss
+        ce = nn.CrossEntropyLoss().cuda()
+        # both support and query loss
+
         import pdb
         pdb.set_trace()
 
-        loss = self.computeCrossEntropyLoss(query_pred, query_y)
-        return query_pred, loss
+        
+
+       
+        #return query_pred, loss
 
     def getFeatures(self, x):
         """
