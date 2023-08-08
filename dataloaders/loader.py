@@ -211,7 +211,7 @@ class MyDataset(Dataset):
                                                                                 support_scannames,
                                                                                 sampled_class,
                                                                                 sampled_classes,
-                                                                                is_support=True)
+                                                                                is_support=False) #True by default
 
             query_ptclouds.append(query_ptclouds_one_way)
             query_labels.append(query_labels_one_way)

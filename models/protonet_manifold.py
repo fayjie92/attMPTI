@@ -65,67 +65,110 @@ class ProtoNet(nn.Module):
         """
         Args:
             support_x:  n_way x k_shot x in_channels x num_points  [support point cloud]
-            support_y:  n_way x k_shot x num_points [support labels]
+            support_y:  Fy x k_shot x num_points [support labels]
             query_x:    n_queries x in_channels x num_points [query point cloud]
             query_y:    n_queries x num_points [query labels, each point \in {0,..., n_way}]
         Return:
             query_pred:   [predicted query point cloud]
         """
+        # Manifold with label propagation
+        # Query is unlabelled, support is labelled
+        # Shares all queries in test time -> Transductive
 
-        ### Manifold learning
-        # embeddings
-        support_x = support_x.view(self.n_way*self.k_shot, self.in_channels, self.n_points)
+        # Step1: Embedding
+        # support_x -> [n_way, k_shot, 3, N] 
+        # query_x   -> [n_way*num_query, 3, N]    
+        # support_y -> [n_way, k_shot, N] 
+        # query_y   -> [n_way*num_query, N] 
+        
+        #import pdb; pdb.set_trace()
+
+        #[1, 3, 128]
+        support_x = support_x.view(self.n_way*self.k_shot, self.in_channels, self.n_points)   
+        #[1, 192, N]
         support_feat = self.getFeatures(support_x)
+        #[5, 192, N]
         query_feat = self.getFeatures(query_x)
         
-        emb_all = torch.cat((support_feat, query_feat), 0)
-        # do we need this? yes. @UMA disucussion
-        emb_s = support_feat.view(-1, support_feat.shape[0] * support_feat.shape[2]) 
-        emb_q = query_feat.view(-1, query_feat.shape[0] * query_feat.shape[2])
-        emb_all = torch.cat((emb_s, emb_q), 1)
-        N, d = emb_all.shape[1], emb_all.shape[0]
+        #1, 5
+        size_s, size_q = support_x.shape[0], query_x.shape[0]
+ 
+        #[N, 192]
+        emb_s = support_feat.view(support_feat.shape[0] * support_feat.shape[2], -1) 
+        #[5*N, 192]
+        emb_q = query_feat.view(query_feat.shape[0] * query_feat.shape[2], -1)
+        #[N+(5*N), 192] -> [T, 192] -> T = N+(5*N)
+        emb_all = torch.cat((emb_s, emb_q), 0)
+        #N, dim=192
+        T, dim = emb_all.shape[0], emb_all.shape[1]
 
-        # knn graph 
+        # step2: knn graph 
         eps = np.finfo(float).eps
-        emb_all = emb_all.transpose(1, 0) / (self.sigma + eps)  # dxT -> Txd
-        emb1 = torch.unsqueeze(emb_all, 1)  # Tx1xd
+        #[T, 192]
+        emb_all = emb_all / (self.sigma + eps) 
+        #[T, 1, 192]
+        emb1 = torch.unsqueeze(emb_all, 1)  
+        #[1, T, 192]
         emb2 = torch.unsqueeze(emb_all, 0)  # 1xTxd
-        W = ((emb1-emb2)**2).mean(2)  #  TxT 
-        W = torch.exp(-W/2)
+        # [T, T]
+        W = ((emb1-emb2)**2).mean(2) 
+        # [T, T] 
+        W = torch.exp(-W/2) 
 
-        # keep top-k values
+        # keep top-k values, k=20
+        #[T, 20=k], [T, 20=k]   
         topk, indices = torch.topk(W, self.k)
+        #[T, T]
         mask = torch.zeros_like(W)
+        #[T, T]
         mask = mask.scatter(1, indices, 1)
+        #[T, T]
         mask = ((mask+torch.t(mask))>0).type(torch.float32)
+        #[T, T]
         W = W*mask
 
         # normalize
+        #[T]
         D = W.sum(0)
+        #[T]
         D_sqrt_inv = torch.sqrt(1.0/(D+eps))
-        D1 = torch.unsqueeze(D_sqrt_inv,1).repeat(1,N)
-        D2 = torch.unsqueeze(D_sqrt_inv,0).repeat(N,1)
+        #[T, T]
+        D1 = torch.unsqueeze(D_sqrt_inv,1).repeat(1,T)
+        #[T, T]
+        D2 = torch.unsqueeze(D_sqrt_inv,0).repeat(T,1)
+        #[T, T]
         S = D1*W*D2
-
-        # Label propagation, F = (I - \alpha S)^{-1}Y
-        ys = support_y.view(self.n_way * self.k_shot, -1)
-        yu = torch.zeros(query_y.shape[0], query_y.shape[1]).cuda()
-        y = torch.cat((ys, yu), 0)
-        F  = torch.matmul(torch.inverse(torch.eye(N).cuda(0)-self.alpha*S+eps), y.view(-1))
-        F = F.view(-1, support_x.shape[2])
-        Fq = F[4:, :]
-
-        # step4: Cross-Entropy Loss
-        ce = nn.CrossEntropyLoss().cuda()
-        # both support and query loss
-
-        import pdb
-        pdb.set_trace()
-
         
 
-       
-        #return query_pred, loss
+        # step3: Label propagation, pred* = (I - \alpha S)^{-1} *Y
+        # support_y: [1= way, 1= shot, N]
+        #[1=shot, N, 1=way]
+        ys = support_y.view(-1)
+        ys = F.one_hot(ys.long(), self.n_way+1)
+        # [num_query, N, 1=way]
+        yu = torch.zeros(emb_q.shape[0], self.n_way+1).cuda()
+        #[1+5, N, 1]
+        y = torch.cat((ys, yu), 0)
+        
+        #[(1+5)*N, 1]
+        pred  = torch.matmul(torch.inverse(torch.eye(T).cuda()-self.alpha*S+eps), y) ###
+
+
+        #[(1+5), N, 1=way] 
+        pred = pred.view(size_s + size_q, -1, self.n_way+1)
+        #[5, N, 1=way]
+        predq = pred[size_s: , :, :]
+
+        
+        # step4: Cross-Entropy Loss
+        ce = nn.CrossEntropyLoss().cuda()
+    
+        # both support and query loss
+        gt = torch.cat((support_y.view(self.n_way* self.k_shot, -1), query_y), 0)
+         
+        loss = ce(pred.view(-1, self.n_way+1), gt.view(-1))
+
+        return predq, loss
 
     def getFeatures(self, x):
         """
