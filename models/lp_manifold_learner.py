@@ -6,15 +6,15 @@ import torch
 from torch import optim
 from torch.nn import functional as F
 
-from models.protonet_manifold import ProtoNet
+from models.lp_manifold import LPManifold
 from utils.checkpoint_util import load_pretrain_checkpoint, load_model_checkpoint
 
 
-class ProtoLearner(object):
+class LPManifoldLearner(object):
     def __init__(self, args, mode='train'):
 
         # init model and optimizer
-        self.model = ProtoNet(args)
+        self.model = LPManifold(args)
         print(self.model)
         if torch.cuda.is_available():
             self.model.cuda()

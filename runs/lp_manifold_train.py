@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from runs.eval import test_few_shot
 from dataloaders.loader import MyDataset, MyTestDataset, batch_test_task_collate
-from models.proto_learner_manifold import ProtoLearner
+from models.lp_manifold_learner import LPManifoldLearner
 from utils.cuda_util import cast_cuda
 from utils.logger import init_logger
 
@@ -22,7 +22,7 @@ def train(args):
     # os.system('cp models/dgcnn.py %s' % (args.log_dir))
 
     # init model and optimizer
-    PL = ProtoLearner(args)
+    PL = LPManifoldLearner(args)
 
     #Init datasets, dataloaders, and writer
     PC_AUGMENT_CONFIG = {'scale': args.pc_augm_scale,

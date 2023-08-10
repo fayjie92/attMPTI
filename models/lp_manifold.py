@@ -7,7 +7,6 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_cluster import knn_graph
-from models.knn_graph import knn
 
 from models.dgcnn import DGCNN
 from models.attention import SelfAttention
@@ -38,9 +37,9 @@ class BaseLearner(nn.Module):
         return x
 
 
-class ProtoNet(nn.Module):
+class LPManifold(nn.Module):
     def __init__(self, args):
-        super(ProtoNet, self).__init__()
+        super(LPManifold, self).__init__()
         self.n_way = args.n_way
         self.k_shot = args.k_shot
         self.dist_method = args.dist_method
