@@ -157,7 +157,10 @@ class ProtoNet(nn.Module):
         #[(1+5), N, 1=way] 
         pred = pred.view(size_s + size_q, -1, self.n_way+1)
         #[5, N, 1=way]
+        breakpoint()
         predq = pred[size_s: , :, :]
+
+        preds = pred[:size_s, :, :]
 
         
         # step4: Cross-Entropy Loss
