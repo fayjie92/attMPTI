@@ -73,8 +73,7 @@ class ProtoNet(nn.Module):
 
         support_fg_feat = self.getMaskedFeatures(support_feat, fg_mask)
         suppoer_bg_feat = self.getMaskedFeatures(support_feat, bg_mask)
-        import pdb
-        pdb.set_trace()
+        
         # prototype learning
         fg_prototypes, bg_prototype = self.getPrototype(support_fg_feat, suppoer_bg_feat)
         prototypes = [bg_prototype] + fg_prototypes
@@ -83,9 +82,6 @@ class ProtoNet(nn.Module):
         similarity = [self.calculateSimilarity(query_feat, prototype, self.dist_method) for prototype in prototypes]
 
         query_pred = torch.stack(similarity, dim=1) #(n_queries, n_way+1, num_points)
-        
-        import pdb
-        pdb.set_trace()
 
         loss = self.computeCrossEntropyLoss(query_pred, query_y)
         return query_pred, loss
