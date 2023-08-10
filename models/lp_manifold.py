@@ -98,7 +98,7 @@ class LPManifold(nn.Module):
         emb_s = emb_s.view(emb_s.shape[0] * emb_s.shape[1], -1) 
         #[5N, 192]
         emb_q = query_feat.permute(0,2,1)
-        emb_q = emb_q.view(emb_q.shape[0] emb_q.shape[1], -1)
+        emb_q = emb_q.view(emb_q.shape[0] * emb_q.shape[1], -1)
 
         #[N+(5*N), 192] -> [T, 192] -> T = N+(5*N)
         emb_all = torch.cat((emb_s, emb_q), 0)
@@ -160,7 +160,7 @@ class LPManifold(nn.Module):
         #[(1+5), N, 1=way] 
         pred = pred.view(size_s + size_q, -1, self.n_way+1)
         #[5, N, 1=way]
-        
+
         predq = pred[size_s: , :, :]
 
         preds = pred[:size_s, :, :]
