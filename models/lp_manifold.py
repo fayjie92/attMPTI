@@ -49,7 +49,6 @@ class LPManifold(nn.Module):
         self.alpha = torch.tensor(0.99, requires_grad=False)
         self.sigma = 0.25
         self.k = args.dgcnn_k # treat it as k for knn in manifold
-        print(self.k)
 
         self.encoder = DGCNN(args.edgeconv_widths, args.dgcnn_mlp_widths, args.pc_in_dim, k=args.dgcnn_k)
         self.base_learner = BaseLearner(args.dgcnn_mlp_widths[-1], args.base_widths)
@@ -93,9 +92,14 @@ class LPManifold(nn.Module):
         size_s, size_q = support_x.shape[0], query_x.shape[0]
  
         #[N, 192]
-        emb_s = support_feat.view(support_feat.shape[0] * support_feat.shape[2], -1) 
-        #[5*N, 192]
-        emb_q = query_feat.view(query_feat.shape[0] * query_feat.shape[2], -1)
+
+
+        emb_s = support_feat.permute(0,2,1)
+        emb_s = emb_s.view(emb_s.shape[0] * emb_s.shape[1], -1) 
+        #[5N, 192]
+        emb_q = query_feat.permute(0,2,1)
+        emb_q = emb_q.view(emb_q.shape[0] emb_q.shape[1], -1)
+
         #[N+(5*N), 192] -> [T, 192] -> T = N+(5*N)
         emb_all = torch.cat((emb_s, emb_q), 0)
         #N, dim=192
@@ -156,7 +160,7 @@ class LPManifold(nn.Module):
         #[(1+5), N, 1=way] 
         pred = pred.view(size_s + size_q, -1, self.n_way+1)
         #[5, N, 1=way]
-        breakpoint()
+        
         predq = pred[size_s: , :, :]
 
         preds = pred[:size_s, :, :]
