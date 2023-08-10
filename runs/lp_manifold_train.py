@@ -1,6 +1,6 @@
-""" Prototypical Network for Few-shot 3D Point Cloud Semantic Segmentation [Baseline]
-
-Author: Zhao Na, 2020
+"""
+Transductive Few-Shot Segmentation with Manifold learning for point cloud.
+Author: Abdur R. Fayjie & Umamaheswaran Raman Kumar, 2023 
 """
 import os
 import torch

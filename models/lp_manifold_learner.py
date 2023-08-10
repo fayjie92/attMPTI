@@ -1,7 +1,8 @@
-""" ProtoNet with/without attention learner for Few-shot 3D Point Cloud Semantic Segmentation
-
-Author: Zhao Na, 2020
 """
+Transductive Few-Shot Segmentation with Manifold learning for point cloud.
+Author: Abdur R. Fayjie & Umamaheswaran Raman Kumar, 2023 
+"""
+
 import torch
 from torch import optim
 from torch.nn import functional as F

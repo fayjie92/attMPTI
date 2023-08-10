@@ -1,6 +1,6 @@
-""" Prototypical Network 
-
-Author: Zhao Na, 2020
+"""
+Transductive Few-Shot Segmentation with Manifold learning for point cloud.
+Author: Abdur R. Fayjie & Umamaheswaran Raman Kumar, 2023 
 """
 import torch
 import numpy as np
