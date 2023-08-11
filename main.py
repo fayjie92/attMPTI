@@ -129,7 +129,7 @@ if __name__ == '__main__':
         #                                                                     args.n_way, args.k_shot,
         #                                                                     (args.triplet_loss_weight>0),
         #                                                                     args.use_attention)
-        args.log_dir = args.save_path + 'log_lpmanifold_%s_S%d_N%d_K%d' %(args.dataset, args.cvfold,
+        args.log_dir = args.save_path + 'log_protomanifold_%s_S%d_N%d_K%d' %(args.dataset, args.cvfold,
                                                                              args.n_way, args.k_shot,
                                                                              #(args.triplet_loss_weight>0),
                                                                              #args.use_attention
