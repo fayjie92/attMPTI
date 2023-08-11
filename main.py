@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--phase', type=str, default='graphtrain', choices=['pretrain', 'finetune',
                                                                             'prototrain', 'protoeval',
                                                                             'mptitrain', 'mptieval',
-                                                                            'lpmanifold'])
+                                                                            'lpmanifold', 'protomanifold'])
     parser.add_argument('--dataset', type=str, default='s3dis', help='Dataset name: s3dis|scannet')
     parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting '
                                                               'Options:{0,1}')
@@ -123,6 +123,18 @@ if __name__ == '__main__':
                                                                              #args.use_attention
                                                                              )
         from runs.lp_manifold_train import train
+        train(args)
+    elif args.phase=='protomanifold':
+        #args.log_dir = args.save_path + 'log_proto_%s_S%d_N%d_K%d_TL%d_Att%d' %(args.dataset, args.cvfold,
+        #                                                                     args.n_way, args.k_shot,
+        #                                                                     (args.triplet_loss_weight>0),
+        #                                                                     args.use_attention)
+        args.log_dir = args.save_path + 'log_lpmanifold_%s_S%d_N%d_K%d' %(args.dataset, args.cvfold,
+                                                                             args.n_way, args.k_shot,
+                                                                             #(args.triplet_loss_weight>0),
+                                                                             #args.use_attention
+                                                                             )
+        from runs.proto_manifold_train import train
         train(args)
     elif args.phase=='protoeval' or args.phase=='mptieval':
         args.log_dir = args.model_checkpoint_path
