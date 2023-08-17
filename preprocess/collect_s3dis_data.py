@@ -73,6 +73,7 @@ if __name__ == '__main__':
     CLASS_NAMES = [x.rstrip() for x in open(os.path.join(ROOT_DIR, 'datasets/S3DIS/meta', 's3dis_classnames.txt'))]
     CLASS2LABEL = {cls: i for i, cls in enumerate(CLASS_NAMES)}
 
+
     for folder in folders:
         print("=================\n   " + folder + "\n=================")
 
