@@ -14,7 +14,8 @@ if __name__ == '__main__':
     parser.add_argument('--phase', type=str, default='graphtrain', choices=['pretrain', 'finetune',
                                                                             'prototrain', 'protoeval',
                                                                             'mptitrain', 'mptieval',
-                                                                            'lpmanifold', 'protomanifold'])
+                                                                            'lpmanifold', 'protomanifold',
+                                                                            'pretrain_transformer'])
     parser.add_argument('--dataset', type=str, default='s3dis', help='Dataset name: s3dis|scannet')
     parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting '
                                                               'Options:{0,1}')
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     parser.add_argument('--pc_augm_jitter', type=int, default=1,
                         help='Training augmentation: Bool, Gaussian jittering of all attributes')
 
-    # feature extraction network configuration
+    # feature extraction network -> DGCNN configuration
     parser.add_argument('--dgcnn_k', type=int, default=20, help='Number of nearest neighbors in Edgeconv')
     parser.add_argument('--edgeconv_widths', default='[[64,64], [64,64], [64,64]]', help='DGCNN Edgeconv widths')
     parser.add_argument('--dgcnn_mlp_widths', default='[512, 256]', help='DGCNN MLP (following stacked Edgeconv) widths')
@@ -74,6 +75,11 @@ if __name__ == '__main__':
     parser.add_argument('--output_dim', type=int, default=64,
                         help='The dimension of the final output of attention learner or linear mapper')
     parser.add_argument('--use_attention', action='store_true', help='if incorporate attention learner')
+
+    # feature extraction network -> point transformer configuration
+    parser.add_argument('--nblocks', type=int, default=4, help='Number of transformer blocks')
+    parser.add_argument('--nneighbor', type=int, default=16, help='Nearest neighbors in transformer model')
+    parser.add_argument('--transformer_dim', type=int, default=512, help='Transformer block dimension')
 
     # protoNet configuration
     parser.add_argument('--dist_method', default='euclidean',
@@ -144,6 +150,10 @@ if __name__ == '__main__':
         args.log_dir = args.save_path + 'log_pretrain_%s_S%d' % (args.dataset, args.cvfold)
         from runs.pre_train import pretrain
         pretrain(args)
+    elif args.phase=='pretrain_transformer':
+        args.log_dir = args.save_path + 'log_pretrain_transformer_%s_S%d' % (args.dataset, args.cvfold)
+        from runs.pre_train_transformer import pretrain_transformer
+        pretrain_transformer(args) 
     elif args.phase=='finetune':
         args.log_dir = args.save_path + 'log_finetune_%s_S%d_N%d_K%d' % (args.dataset, args.cvfold,
                                                                             args.n_way, args.k_shot)
