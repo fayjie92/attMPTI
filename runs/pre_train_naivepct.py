@@ -14,7 +14,8 @@ from utils.logger import init_logger
 from utils.checkpoint_util import save_pretrain_checkpoint
 from models.PointCloudTransformer.model import PCT, NaivePCT, SPCT, SegmentationHead, Segmentation
 
-# ********* Segmentation Networks without class labels *********
+# Note: Segmentation Networks without class labels
+# modified @fayjie
 
 class NaivePCTSeg(nn.Module):
     def __init__(self, num_class):
@@ -35,9 +36,9 @@ class SPCTSeg(nn.Module):
         self.encoder = SPCT()
         self.segmenter = SegmentationHead(num_class)
 
-    def forward(self, x):
+    def forward(self, x, cls_label):
         x, x_max, x_mean = self.encoder(x)
-        x = self.segmenter(x, x_max, x_mean)
+        x = self.segmenter(x, x_max, x_mean, cls_label)
         return x
 
 class PCTSeg(nn.Module):
@@ -52,19 +53,17 @@ class PCTSeg(nn.Module):
         x = self.segmenter(x, x_max, x_mean)
         return x
     
-# ********* Segmentation model with class labels: one-hot labels *********
-class SPCTSeg_ClassLabels(nn.Module):
+class NaivePCTSeg_ClassLabels(nn.Module):
     def __init__(self, num_class):
         super().__init__()
     
-        self.encoder = SPCT()
+        self.encoder = NaivePCT()
         self.segmenter = Segmentation(num_class)
 
     def forward(self, x, cls_label):
         x, x_max, x_mean = self.encoder(x)
         x = self.segmenter(x, x_max, x_mean, cls_label)
         return x
-
 
 def metric_evaluate(predicted_label, gt_label, NUM_CLASS):
     """
@@ -99,7 +98,7 @@ def metric_evaluate(predicted_label, gt_label, NUM_CLASS):
     mean_IoU = np.array(iou_list[1:]).mean()
     return oa, mean_IoU, iou_list
 
-def pretrain_spct(args):
+def pretrain_naivepct(args):
     logger = init_logger(args.log_dir, args)
 
     # Init datasets, dataloaders, and writer
@@ -142,14 +141,8 @@ def pretrain_spct(args):
     WRITER = SummaryWriter(log_dir=args.log_dir)
 
     # Init model and optimizer
-    print(args.class_labels)
-    if args.class_labels==1:
-        model = SPCTSeg_ClassLabels(NUM_CLASSES)
-    elif args.class_labels==0:
-        model = SPCTSeg(NUM_CLASSES)
-    else:
-        print('wrong choice, choices: [0: no class labels, 1: class labels]')
-    
+    model = NaivePCTSeg_ClassLabels(NUM_CLASSES)
+   
     if torch.cuda.is_available():
         model.cuda()
 
@@ -174,16 +167,10 @@ def pretrain_spct(args):
             if torch.cuda.is_available():
                 ptclouds = ptclouds.cuda()
                 labels = labels.cuda()
-                one_hot_class_labels = F.one_hot(labels)
+                labels = labels.type(torch.cuda.FloatTensor)
 
-            if args.class_labels==1:
-                logits = model(ptclouds, one_hot_class_labels)
-            elif args.class_labels==0:
-                logits = model(ptclouds)
-            else:
-                print('wrong choice, choices: [0: no class labels, 1: class labels]')
-            
-            loss = F.cross_entropy(logits, labels)
+            logits = model(ptclouds, labels)
+            loss = F.cross_entropy(logits, labels.long())
 
             # Loss backwards and optimizer updates
             optimizer.zero_grad()
@@ -207,15 +194,10 @@ def pretrain_spct(args):
                     if torch.cuda.is_available():
                         ptclouds = ptclouds.cuda()
                         labels = labels.cuda()
+                        labels = labels.type(torch.cuda.FloatTensor)
                     
-                    if args.class_labels==1:
-                        logits = model(ptclouds, one_hot_class_labels)
-                    elif args.class_labels==0:
-                        logits = model(ptclouds)
-                    else:
-                        print('wrong choice, choices: [0: no class labels, 1: class labels]')
-                        
-                    loss = F.cross_entropy(logits, labels)
+                    logits = model(ptclouds, labels)
+                    loss = F.cross_entropy(logits, labels.long())
 
                     # 　Compute predictions
                     _, preds = torch.max(logits.detach(), dim=1, keepdim=False)

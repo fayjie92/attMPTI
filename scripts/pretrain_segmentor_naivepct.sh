@@ -20,7 +20,11 @@ WEIGHT_DECAY=0.0001
 DECAY_STEP=50
 DECAY_RATIO=0.5
 
-args=(--phase 'pretrain' --dataset "${DATASET}" --cvfold $SPLIT
+NBLOCKS=16
+NNEIGHBOR=1024
+
+
+args=(--phase 'pretrain_naivepct' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"
       --pc_npts $NUM_POINTS --pc_attribs "$PC_ATTRIBS" --pc_augm
       --edgeconv_widths "$EDGECONV_WIDTHS" --dgcnn_k $K
@@ -28,6 +32,7 @@ args=(--phase 'pretrain' --dataset "${DATASET}" --cvfold $SPLIT
       --n_iters $NUM_EPOCHS --eval_interval $EVAL_INTERVAL
       --batch_size $BATCH_SIZE --n_workers $NUM_WORKERS
       --pretrain_lr $LR --pretrain_weight_decay $WEIGHT_DECAY
-      --pretrain_step_size $DECAY_STEP --pretrain_gamma $DECAY_RATIO)
+      --pretrain_step_size $DECAY_STEP --pretrain_gamma $DECAY_RATIO
+      --nblocks $NBLOCKS --nneighbor $NNEIGHBOR)
 
 CUDA_VISIBLE_DEVICES=$GPU_ID python main.py "${args[@]}"

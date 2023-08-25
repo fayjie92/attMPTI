@@ -1,21 +1,25 @@
-"""Main function for this repo
-
+"""
+Main function for this repo
 Author: Zhao Na, 2020
-
+Modified: Abdur R. Fayjie and Umamaheswaran Raman Kumar, 2023
 """
 import ast
 import argparse
+from datetime import datetime
 
+# save each experiment using the current time
+now = datetime.now()
+now_str = now.strftime("%d%m%Y_%H%M%S")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     #data
-    parser.add_argument('--phase', type=str, default='graphtrain', choices=['pretrain', 'finetune',
-                                                                            'prototrain', 'protoeval',
-                                                                            'mptitrain', 'mptieval',
-                                                                            'lpmanifold', 'protomanifold',
-                                                                            'pretrain_transformer'])
+    parser.add_argument('--phase', type=str, default='graphtrain', 
+                        choices=['pretrain_dgcnn', 'finetune_dgcnn', 'prototrain_dgcnn', 'protoeval_dgcnn',
+                                 'mptitrain_dgcnn', 'mptieval_dgcnn', 'lpmanifold_dgcnn', 'protomanifold_dgcnn',
+                                 'pretrain_spct','pretrain_naivepct','pretrain_pct'])
+    
     parser.add_argument('--dataset', type=str, default='s3dis', help='Dataset name: s3dis|scannet')
     parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting '
                                                               'Options:{0,1}')
@@ -80,6 +84,8 @@ if __name__ == '__main__':
     parser.add_argument('--nblocks', type=int, default=4, help='Number of transformer blocks')
     parser.add_argument('--nneighbor', type=int, default=16, help='Nearest neighbors in transformer model')
     parser.add_argument('--transformer_dim', type=int, default=512, help='Transformer block dimension')
+    parser.add_argument('--class_labels', type=int, default=0, 
+                        help='One-hot features in segmenter for transformer models')
 
     # protoNet configuration
     parser.add_argument('--dist_method', default='euclidean',
@@ -99,64 +105,59 @@ if __name__ == '__main__':
     args.base_widths = ast.literal_eval(args.base_widths)
     args.pc_in_dim = len(args.pc_attribs)
 
-    # Start trainer for pre-train, proto-train, proto-eval, mpti-train, mpti-test
-    if args.phase=='mptitrain':
-        args.log_dir = args.save_path + 'log_mpti_%s_S%d_N%d_K%d_Att%d' % (args.dataset, args.cvfold,
+    # Note: log files are stored under log_<dataset> directory.
+
+    # Start trainer for a phase, check args.phase with choices.
+    if args.phase=='mptitrain_dgcnn':
+        args.log_dir = args.save_path + 'log_mpti_dgcnn%s_S%d_N%d_K%d_Att%d_T%s' % (args.dataset, args.cvfold,
                                                                              args.n_way, args.k_shot,
-                                                                             args.use_attention)
+                                                                             args.use_attention, now_str)
         from runs.mpti_train import train
         train(args)
-    elif args.phase=='prototrain':
-        #args.log_dir = args.save_path + 'log_proto_%s_S%d_N%d_K%d_TL%d_Att%d' %(args.dataset, args.cvfold,
-        #                                                                     args.n_way, args.k_shot,
-        #                                                                     (args.triplet_loss_weight>0),
-        #                                                                     args.use_attention)
-        args.log_dir = args.save_path + 'log_proto_%s_S%d_N%d_K%d' %(args.dataset, args.cvfold,
+    elif args.phase=='prototrain_dgcnn':
+        args.log_dir = args.save_path + 'log_proto_dgcnn%s_S%d_N%d_K%d_Att%d_T%s' %(args.dataset, args.cvfold,
                                                                              args.n_way, args.k_shot,
-                                                                             #(args.triplet_loss_weight>0),
-                                                                             #args.use_attention
+                                                                             args.use_attention, now_str
                                                                              )
         from runs.proto_train import train
         train(args)
-    elif args.phase=='lpmanifold':
-        #args.log_dir = args.save_path + 'log_proto_%s_S%d_N%d_K%d_TL%d_Att%d' %(args.dataset, args.cvfold,
-        #                                                                     args.n_way, args.k_shot,
-        #                                                                     (args.triplet_loss_weight>0),
-        #                                                                     args.use_attention)
-        args.log_dir = args.save_path + 'log_lpmanifold_%s_S%d_N%d_K%d' %(args.dataset, args.cvfold,
+    elif args.phase=='lpmanifold_dgcnn':
+        args.log_dir = args.save_path + 'log_lpmanifold_dgcnn%s_S%d_N%d_K%d_Att%d_T%s' %(args.dataset, args.cvfold,
                                                                              args.n_way, args.k_shot,
-                                                                             #(args.triplet_loss_weight>0),
-                                                                             #args.use_attention
+                                                                             args.use_attention, now_str
                                                                              )
         from runs.lp_manifold_train import train
         train(args)
-    elif args.phase=='protomanifold':
-        #args.log_dir = args.save_path + 'log_proto_%s_S%d_N%d_K%d_TL%d_Att%d' %(args.dataset, args.cvfold,
-        #                                                                     args.n_way, args.k_shot,
-        #                                                                     (args.triplet_loss_weight>0),
-        #                                                                     args.use_attention)
-        args.log_dir = args.save_path + 'log_protomanifold_%s_S%d_N%d_K%d' %(args.dataset, args.cvfold,
+    elif args.phase=='protomanifold_dgcnn':
+        args.log_dir = args.save_path + 'log_protomanifold_dgcnn%s_S%d_N%d_K%d_Att%d_T%s' %(args.dataset, args.cvfold,
                                                                              args.n_way, args.k_shot,
-                                                                             #(args.triplet_loss_weight>0),
-                                                                             #args.use_attention
+                                                                             args.use_attention, now_str
                                                                              )
         from runs.proto_manifold_train import train
         train(args)
-    elif args.phase=='protoeval' or args.phase=='mptieval':
+    elif args.phase=='protoeval_dgcnn' or args.phase=='mptieval_dgcnn':
         args.log_dir = args.model_checkpoint_path
         from runs.eval import eval
         eval(args)
-    elif args.phase=='pretrain':
-        args.log_dir = args.save_path + 'log_pretrain_%s_S%d' % (args.dataset, args.cvfold)
+    elif args.phase=='pretrain_dgcnn':
+        args.log_dir = args.save_path + 'log_pretrain_dgcnn%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
         from runs.pre_train import pretrain
         pretrain(args)
-    elif args.phase=='pretrain_transformer':
-        args.log_dir = args.save_path + 'log_pretrain_transformer_%s_S%d' % (args.dataset, args.cvfold)
-        from runs.pre_train_transformer import pretrain_transformer
-        pretrain_transformer(args) 
-    elif args.phase=='finetune':
-        args.log_dir = args.save_path + 'log_finetune_%s_S%d_N%d_K%d' % (args.dataset, args.cvfold,
-                                                                            args.n_way, args.k_shot)
+    elif args.phase=='pretrain_naivepct':
+        args.log_dir = args.save_path + 'log_pretrain_naivepct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+        from runs.pre_train_naivepct import pretrain_naivepct
+        pretrain_naivepct(args)
+    elif args.phase=='pretrain_spct':
+        args.log_dir = args.save_path + 'log_pretrain_spct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+        from runs.pre_train_spct import pretrain_spct
+        pretrain_spct(args)  
+    elif args.phase=='pretrain_pct':
+        args.log_dir = args.save_path + 'log_pretrain_pct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+        from runs.pre_train_pct import pretrain_pct
+        pretrain_pct(args)    
+    elif args.phase=='finetune_dgcnn':
+        args.log_dir = args.save_path + 'log_finetune_dgcnn%s_S%d_N%d_K%d_T%s' % (args.dataset, args.cvfold,
+                                                                            args.n_way, args.k_shot, now_str)
         from runs.fine_tune import finetune
         finetune(args)
     else:

@@ -5,7 +5,6 @@ import torch.nn.functional as F
 
 from models.PointCloudTransformer.util import sample_and_knn_group
 
-
 class Embedding(nn.Module):
     """
     Input Embedding layer which consist of 2 stacked LBR layer.

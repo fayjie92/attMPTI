@@ -16,3 +16,5 @@ utils/.ipynb_checkpoints/
 log_s3dis_10_08_23/
 log_s3dis_14_08_23/
 log_s3dis_18_08_23/
+old_logs/*
+*.bak

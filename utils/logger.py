@@ -24,7 +24,7 @@ def mkdir(path):
 
 def print_args(logger, args):
     opt = vars(args)
-    logger.cprint('------------ Options -------------')
+    logger.cprint('---------- Args options -------------')
     for k, v in sorted(opt.items()):
         logger.cprint('%s: %s' % (str(k), str(v)))
     logger.cprint('-------------- End ----------------\n')

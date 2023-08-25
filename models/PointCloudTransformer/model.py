@@ -140,8 +140,8 @@ class Segmentation(nn.Module):
         self.part_num = part_num
 
         self.label_conv = nn.Sequential(
-            nn.Conv1d(16, 64, kernel_size=1, bias=False),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(2048, 64, kernel_size=1, bias=False), 
+            nn.BatchNorm1d(64), 
             nn.LeakyReLU(negative_slope=0.2)
         )
 
@@ -160,7 +160,7 @@ class Segmentation(nn.Module):
         x_max_feature = x_max.unsqueeze(-1).repeat(1, 1, N)
         x_mean_feature = x_mean.unsqueeze(-1).repeat(1, 1, N)
 
-        cls_label_one_hot = cls_label.view(batch_size, 16, 1)
+        cls_label_one_hot = cls_label.view(batch_size, 2048, 1)   #16->2048
         cls_label_feature = self.label_conv(cls_label_one_hot).repeat(1, 1, N)
 
         x = torch.cat([x, x_max_feature, x_mean_feature, cls_label_feature], dim=1)  # 1024 * 3 + 64

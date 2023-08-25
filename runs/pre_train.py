@@ -141,7 +141,7 @@ def pretrain(args):
     best_iou = 0
     global_iter = 0
     for epoch in range(args.n_iters):
-        mode.train()
+        model.train()
         for batch_idx, (ptclouds, labels) in enumerate(TRAIN_LOADER):
             if torch.cuda.is_available():
                 ptclouds = ptclouds.cuda()
@@ -161,7 +161,7 @@ def pretrain(args):
 
         lr_scheduler.step()
 
-        if (epoch+1) % args.eval_interval == 0:
+        if (epoch) % args.eval_interval == 0:
             pred_total = []
             gt_total = []
             model.eval()
