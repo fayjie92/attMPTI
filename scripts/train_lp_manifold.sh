@@ -5,7 +5,7 @@ SPLIT=0
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 
-NUM_POINTS=1024   # default:2048
+NUM_POINTS=2048   # default:2048
 PC_ATTRIBS='xyz'
 EDGECONV_WIDTHS='[[64,64], [64, 64], [64, 64]]'
 MLP_WIDTHS='[512, 256]'
@@ -13,7 +13,7 @@ K=20
 BASE_WIDTHS='[128, 64]'
 
 PRETRAIN_CHECKPOINT='./log_s3dis/log_pretrain_s3dis_S0'
-N_WAY=1
+N_WAY=2
 K_SHOT=1
 N_QUESIES=1
 N_TEST_EPISODES=100
@@ -31,7 +31,7 @@ SIGMA=1
 
 args=(--phase 'lpmanifold' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"
-      --pretrain_checkpoint_path "$PRETRAIN_CHECKPOINT" 
+      --pretrain_checkpoint_path "$PRETRAIN_CHECKPOINT"
       --n_subprototypes $N_SUBPROTOTYPES  --k_connect $K_CONNECT
       --dist_method "$SIM_FUNCTION" --sigma $SIGMA
       --pc_npts $NUM_POINTS --pc_attribs "$PC_ATTRIBS" --pc_augm

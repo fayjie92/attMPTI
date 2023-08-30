@@ -63,10 +63,7 @@ class LPManifoldLearner(object):
 
         self.lr_scheduler.step()
 
-        query_pred = F.softmax(query_logits, dim=2).argmax(dim=2)
-
-        
-
+        query_pred = F.softmax(query_logits, dim=1).argmax(dim=1)
         correct = torch.eq(query_pred, query_y).sum().item()  # including background class
         accuracy = correct / (query_y.shape[0]*query_y.shape[1])
 
@@ -86,7 +83,7 @@ class LPManifoldLearner(object):
 
         with torch.no_grad():
             logits, loss = self.model(support_x, support_y, query_x, query_y)
-            pred = F.softmax(logits, dim=2).argmax(dim=2)
+            pred = F.softmax(logits, dim=1).argmax(dim=1)
             correct = torch.eq(pred, query_y).sum().item()
             accuracy = correct / (query_y.shape[0]*query_y.shape[1])
 

@@ -116,6 +116,7 @@ class ProtoNetManifold(nn.Module):
 
         # Debug
         # kNN search for the graph
+        breakpoint()
         X = emb_all.cpu().detach().numpy()
         d = X.shape[1]
         res = faiss.StandardGpuResources()
@@ -127,7 +128,7 @@ class ProtoNetManifold(nn.Module):
         index.add(X) 
         N = X.shape[0]
         Nidx = index.ntotal
-
+        
         D, I = index.search(X, self.k + 1)
 
         # Create the graph

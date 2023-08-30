@@ -6,10 +6,71 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_cluster import knn_graph
+from torch_geometric.nn import MLP,DynamicEdgeConv
+#from torch_cluster import knn_graph
+#import faiss
+#from faiss import normalize_L2
+#import scipy
 
 from models.dgcnn import DGCNN
 from models.attention import SelfAttention
+
+
+from torch_geometric.nn import MessagePassing
+from torch_geometric.utils import add_self_loops, degree
+from torch_geometric.nn import knn_graph
+
+class LabelPropagation(MessagePassing):
+    def __init__(self):
+        super().__init__(aggr='add')  # "Add" aggregation (Step 5).
+
+
+    def forward(self, x, edge_index):
+        # x has shape [N, in_channels]
+        # edge_index has shape [2, E]
+
+        # Step 1: Add self-loops to the adjacency matrix.
+        edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+
+
+        # Step 3: Compute normalization.
+        row, col = edge_index
+        deg = degree(col, x.size(0), dtype=x.dtype)
+        deg_inv_sqrt = deg.pow(-0.5)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+        norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+
+        # Step 4-5: Start propagating messages.
+        out = self.propagate(edge_index, x=x, norm=norm)
+
+        return out
+
+    def message(self, x_j, norm):
+        # x_j has shape [E, out_channels]
+
+        # Step 4: Normalize node features.
+        #print(norm)
+        #print(x_j)
+        #breakpoint()
+        return norm.view(-1, 1) * x_j
+
+
+class Manifold(LabelPropagation):
+    def __init__(self, n_way=2, k=20):
+        super().__init__()
+        self.n_way = n_way
+        self.k = k
+        #self.mlp = MLP(in_channels=192, hidden_channels=100, out_channels=50, num_layers=3)
+        self.linear = nn.Linear(192, 50)
+
+    def forward(self, x, batch=None):
+        shape = x.shape[1] - (self.n_way+1)
+        x1 = x[:,:shape]
+        #x1 = self.mlp(x1)
+        x1 = self.linear(x1)
+        x2 = x[:,shape:]
+        edge_index = knn_graph(x1, self.k, batch, loop=False, flow=self.flow)
+        return super().forward(x2, edge_index)
 
 
 class BaseLearner(nn.Module):
@@ -48,7 +109,7 @@ class LPManifold(nn.Module):
         self.use_attention = args.use_attention
         self.alpha = torch.tensor(0.99, requires_grad=False)
         self.sigma = 0.25
-        self.k = args.dgcnn_k # treat it as k for knn in manifold
+        self.knn = 20 # treat it as k for knn in manifold
 
         self.encoder = DGCNN(args.edgeconv_widths, args.dgcnn_mlp_widths, args.pc_in_dim, k=args.dgcnn_k)
         self.base_learner = BaseLearner(args.dgcnn_mlp_widths[-1], args.base_widths)
@@ -57,6 +118,22 @@ class LPManifold(nn.Module):
             self.att_learner = SelfAttention(args.dgcnn_mlp_widths[-1], args.output_dim)
         else:
             self.linear_mapper = nn.Conv1d(args.dgcnn_mlp_widths[-1], args.output_dim, 1, bias=False)
+        '''self.mlp1 = nn.Sequential(
+            MLP(2*197, 100, 100, 3, norm="batchnorm"),
+            nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
+        )
+        self.mlp2 = nn.Sequential(
+            MLP(2 * 100, 50, 2, 1, norm="batchnorm"),
+            nn.ReLU(),
+            nn.BatchNorm1d(2 * hidden_dim),
+        )'''
+        #self.mlp1 = MLP(in_channels=2*(192+self.n_way+1), hidden_channels=100, out_channels=50, num_layers=3)
+        #self.mlp2 = MLP(in_channels=2*50, hidden_channels=10, out_channels=self.n_way+1, num_layers=3)
+        #self.label_prop1 = DynamicEdgeConv(self.mlp1, k=20, aggr='max')
+        #self.label_prop2 = DynamicEdgeConv(self.mlp2, k=20, aggr='max')
+        self.manifold = Manifold(self.n_way, k=75)
+        
 
     
     def forward(self, support_x, support_y, query_x, query_y):
@@ -83,98 +160,50 @@ class LPManifold(nn.Module):
 
         #[1, 3, 128]
         support_x = support_x.view(self.n_way*self.k_shot, self.in_channels, self.n_points)   
+        #1, 5
+        size_s, size_q = support_x.shape[0], query_x.shape[0]
         #[1, 192, N]
         support_feat = self.getFeatures(support_x)
         #[5, 192, N]
         query_feat = self.getFeatures(query_x)
         
-        #1, 5
-        size_s, size_q = support_x.shape[0], query_x.shape[0]
- 
         #[N, 192]
-
-
         emb_s = support_feat.permute(0,2,1)
-        emb_s = emb_s.view(emb_s.shape[0] * emb_s.shape[1], -1) 
+        emb_s = emb_s.reshape(emb_s.shape[0] * emb_s.shape[1], -1) 
+        #support_x = support_x.permute(0,2,1)
+        #support_x = support_x.view(support_x.shape[0] * support_x.shape[1], -1) 
+        y_s = support_y.permute(0,2,1).view(-1)
+        y_s = F.one_hot(y_s.long(), self.n_way+1)
+        
         #[5N, 192]
         emb_q = query_feat.permute(0,2,1)
-        emb_q = emb_q.view(emb_q.shape[0] * emb_q.shape[1], -1)
+        emb_q = emb_q.reshape(emb_q.shape[0] * emb_q.shape[1], -1)
+        #query_x = query_x.permute(0,2,1)
+        #query_x = query_x.view(query_x.shape[0] * query_x.shape[1], -1)
+        #y_q = torch.mul(torch.ones(emb_q.shape[0], self.n_way+1), 1.0/(self.n_way+1)).cuda()
+        y_q = torch.zeros(emb_q.shape[0], self.n_way+1).cuda()
 
         #[N+(5*N), 192] -> [T, 192] -> T = N+(5*N)
-        emb_all = torch.cat((emb_s, emb_q), 0)
+        emb_all = torch.cat((torch.cat((emb_s,y_s),1), torch.cat((emb_q,y_q),1)), 0)
         #N, dim=192
         T, dim = emb_all.shape[0], emb_all.shape[1]
 
-        # step2: knn graph 
-        eps = np.finfo(float).eps
-        #[T, 192]
-        emb_all = emb_all / (self.sigma + eps) 
-        #[T, 1, 192]
-        emb1 = torch.unsqueeze(emb_all, 1)  
-        #[1, T, 192]
-        emb2 = torch.unsqueeze(emb_all, 0)  # 1xTxd
-        # [T, T]
-        W = ((emb1-emb2)**2).mean(2) 
-        # [T, T] 
-        W = torch.exp(-W/2) 
-
-        # keep top-k values, k=20
-        #[T, 20=k], [T, 20=k]   
-        topk, indices = torch.topk(W, self.k)
-        #[T, T]
-        mask = torch.zeros_like(W)
-        #[T, T]
-        mask = mask.scatter(1, indices, 1)
-        #[T, T]
-        mask = ((mask+torch.t(mask))>0).type(torch.float32)
-        #[T, T]
-        W = W*mask
-
-        # normalize
-        #[T]
-        D = W.sum(0)
-        #[T]
-        D_sqrt_inv = torch.sqrt(1.0/(D+eps))
-        #[T, T]
-        D1 = torch.unsqueeze(D_sqrt_inv,1).repeat(1,T)
-        #[T, T]
-        D2 = torch.unsqueeze(D_sqrt_inv,0).repeat(T,1)
-        #[T, T]
-        S = D1*W*D2
+        #emb_inter = self.label_prop1(emb_all)
+        #pred = self.label_prop2(emb_inter)
+        #manifold = Manifold(self.n_way, k=50)
+        pred = self.manifold(emb_all)
+        #print(emb_all)
+        #print(pred)
+        #breakpoint()
+        pred[pred <0] = 0
+        pred = pred.view(size_s + size_q, -1, self.n_way+1)#.to_dense()
         
-
-        # step3: Label propagation, pred* = (I - \alpha S)^{-1} *Y
-        # support_y: [1= way, 1= shot, N]
-        #[1=shot, N, 1=way]
-        ys = support_y.view(-1)
-        ys = F.one_hot(ys.long(), self.n_way+1)
-        # [num_query, N, 1=way]
-        yu = torch.zeros(emb_q.shape[0], self.n_way+1).cuda()
-        #[1+5, N, 1]
-        y = torch.cat((ys, yu), 0)
-        
-        #[(1+5)*N, 1]
-        pred  = torch.matmul(torch.inverse(torch.eye(T).cuda()-self.alpha*S+eps), y) ###
-
-
-        #[(1+5), N, 1=way] 
-        pred = pred.view(size_s + size_q, -1, self.n_way+1)
-        #[5, N, 1=way]
-
         predq = pred[size_s: , :, :]
-
-        preds = pred[:size_s, :, :]
-
+       
+        loss = self.computeCrossEntropyLoss(predq.view(-1, self.n_way+1), query_y.view(-1))
+        query_pred = predq.permute(0, 2, 1)
         
-        # step4: Cross-Entropy Loss
-        ce = nn.CrossEntropyLoss().cuda()
-    
-        # both support and query loss
-        gt = torch.cat((support_y.view(self.n_way* self.k_shot, -1), query_y), 0)
-         
-        loss = ce(pred.view(-1, self.n_way+1), gt.view(-1))
-
-        return predq, loss
+        return query_pred, loss
 
     def getFeatures(self, x):
         """

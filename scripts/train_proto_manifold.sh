@@ -5,7 +5,7 @@ SPLIT=0
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 
-NUM_POINTS=1024  # default 2048
+NUM_POINTS=2048  # default 2048
 PC_ATTRIBS='xyz'
 EDGECONV_WIDTHS='[[64,64], [64, 64], [64, 64]]'
 MLP_WIDTHS='[512, 256]'
