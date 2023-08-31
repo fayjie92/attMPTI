@@ -1,12 +1,40 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.PointCloudTransformer.model import SPCT
+#from models.PointCloudTransformer.model import SPCT
+from models.PointCloudTransformer.module import Embedding, NeighborEmbedding, OA, SA
 
-class SegmentLearner(nn.Module):
+# *************** Encoder: SPCT ******************
+
+class SPCT_encoder(nn.Module):
+  def __init__(self):
+    super().__init__()
+    # Note: change this to 3 from xyz, 6 for xyzrgb, and 9 for xyzrgbXYZ
+    self.embedding = Embedding(9, 128)
+    self.sa1 = OA(128)
+    self.sa2 = OA(128)
+    self.sa3 = OA(128)
+    self.sa4 = OA(128)
+    self.linear = nn.Sequential(
+      nn.Conv1d(512, 1024, kernel_size=1, bias=False),
+      nn.BatchNorm1d(1024),
+      nn.LeakyReLU(negative_slope=0.2)
+    )
+  def forward(self, x):
+    x = self.embedding(x)
+    x1 = self.sa1(x)
+    x2 = self.sa2(x1)
+    x3 = self.sa3(x2)
+    x4 = self.sa4(x3)
+    x = torch.cat([x, x1, x2, x3, x4], dim=1)   # 128 * 5 = 640
+
+    return x
+
+# *************** Segmentation Head ***************
+
+class SegmentHead(nn.Module):
   def __init__(self, n_pts, args):
     super().__init__()
-    
     self.n_pts = n_pts
     self.output_dim = args.output_dim
     self.cls_lbl = args.class_labels
@@ -17,37 +45,40 @@ class SegmentLearner(nn.Module):
       nn.LeakyReLU(negative_slope=0.2)
     )
     if self.cls_lbl == 1:
-      self.convs1 = nn.Conv1d(1024 * 3 + 64, 512, 1)
+      self.convs1 = nn.Conv1d((128 * 5) + 64, 512, 1)
     else:
-      self.convs1 = nn.Conv1d(1024 * 3, 512, 1) 
+      self.convs1 = nn.Conv1d((128 * 5), 512, 1) 
     self.convs2 = nn.Conv1d(512, 256, 1)
+    self.convs3 = nn.Conv1d(256, 128, 1)
+    self.convs4 = nn.Conv1d(128, 64, 1)
     self.bns1 = nn.BatchNorm1d(512)
     self.bns2 = nn.BatchNorm1d(256)
+    self.bns3 = nn.BatchNorm1d(128)
+    self.bns2 = nn.BatchNorm1d(64)
     self.dp1 = nn.Dropout(0.5)
 
-  def forward(self, x, x_max, x_mean, cls_label):
+  def forward(self, x, cls_label):
     batch_size, _, N = x.size()
-    x_max_feature = x_max.unsqueeze(-1).repeat(1, 1, N)
-    x_mean_feature = x_mean.unsqueeze(-1).repeat(1, 1, N)
-
     if self.cls_lbl == 1:
       cls_label_one_hot = cls_label.view(batch_size, self.n_pts, 1)   
       cls_label_feature = self.label_conv(cls_label_one_hot).repeat(1, 1, N)
 
-      x = torch.cat([x, x_max_feature, x_mean_feature, cls_label_feature], dim=1) 
+      x = torch.cat([x, cls_label_feature], dim=1) 
     else:
-      x = torch.cat([x, x_max_feature, x_mean_feature], dim=1)             
+      x = x     
+    x1 = F.relu(self.bns1(self.convs1(x)))
+    x1 = self.dp1(x1)
+    x2 = F.relu(self.bns2(self.convs2(x1)))
+    x2 = self.dp1(x2)
+    x3 = F.relu(self.bns2(self.convs3(x2)))
+    x3 = self.dp1(x3)
+    x4 = F.relu(self.bns2(self.convs4(x3)))
+    x4 = self.dp1(x4)
+    x_all = torch.cat([x, x1, x2, x3, x4], dim=1)
 
-    # Note: Need to play with this part
-    x = self.convs1(x)
-    x = self.convs2(x)
-    x = F.relu(x)
-    # like a linear mapper
-    #x = nn.Conv1d(256, self.output_dim, 1)
-    #x = F.relu(self.bns1(self.convs1(x)))
-    # x = self.dp1(x)
-    #x = F.relu(self.bns2(self.convs2(x)))
-    return x
+    return x_all
+  
+# *************** Prototypical Networks with SPCT encoder and Segmentation Head ***************
     
 class ProtoNetSPCT(nn.Module):
   def __init__(self, args):
@@ -60,8 +91,8 @@ class ProtoNetSPCT(nn.Module):
     self.use_attention = args.use_attention
     self.k = args.k_connect
 
-    self.encoder = SPCT()
-    self.segmentlearner = SegmentLearner(self.n_points, args)
+    self.encoder = SPCT_encoder()
+    self.segmentlearner = SegmentHead(self.n_points, args)
     
   def forward(self, support_x, support_y, query_x, query_y):
     """
@@ -105,8 +136,8 @@ class ProtoNetSPCT(nn.Module):
     :param x: input data with shape (B, C_in, L)
     :return: features with shape (B, C_out, L)
     """
-    feat, feat_max, feat_mean = self.encoder(x)
-    feat = self.segmentlearner(feat, feat_max, feat_mean, cls_lbl)
+    feat = self.encoder(x)
+    feat = self.segmentlearner(feat, cls_lbl)
     return feat
 
   def getMaskedFeatures(self, feat, mask):

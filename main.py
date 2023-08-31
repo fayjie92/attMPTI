@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Main function by Zhao Na, 2020
 # Modified by Abdur R. Fayjie and Umamaheswaran Raman Kumar, 2023
-
 import ast
 import argparse
 from datetime import datetime
@@ -164,7 +163,8 @@ if __name__ == '__main__':
     from runs.pre_train_pct import pretrain
     pretrain(args)    
   elif args.phase=='prototrain_spct':
-    args.log_dir = args.save_path + 'log_prototrain_spct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+    args.log_dir = args.save_path + 'log_prototrain_spct_%s_S%d_N%d_K%d_T%s' % (args.dataset, args.cvfold, 
+                                                                                args.n_way, args.k_shot, now_str)
     from runs.proto_train_spct import train
     train(args) 
   else:

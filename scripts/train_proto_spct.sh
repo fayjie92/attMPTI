@@ -6,7 +6,7 @@ DATASET='s3dis'
 SPLIT=0
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
-NUM_POINTS=2048  # default 2048
+NUM_POINTS=2048  
 PC_ATTRIBS='xyzrgbXYZ'
 
 # Pretrained checkpoints
@@ -16,14 +16,14 @@ PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_051904'
 
 # Prototypical Network settings
 N_WAY=3
-K_SHOT=1
+K_SHOT=5
 N_QUERIES=1
 N_TEST_EPISODES=100
-DIST_METHOD='euclidean'  # choice ['cosune', 'euclidean']
+DIST_METHOD='cosine'  # choice ['cosune', 'euclidean']
 
 # Training settings
 NUM_ITERS=40000
-EVAL_INTERVAL=2000
+EVAL_INTERVAL=1000
 LR=0.001   
 DECAY_STEP=5000
 DECAY_RATIO=0.5
