@@ -19,7 +19,7 @@ N_WAY=3
 K_SHOT=1
 N_QUERIES=1
 N_TEST_EPISODES=100
-DIST_METHOD='cosine'  # choice ['cosune', 'euclidean']
+DIST_METHOD='euclidean'  # choice ['cosune', 'euclidean']
 
 # Training settings
 NUM_ITERS=40000
@@ -31,7 +31,7 @@ DECAY_RATIO=0.5
 # Settings specific to SPCT (transformer)
 # NBLOCKS=4  # currently not in use
 # NNEIGHBOR=16  # currently not in use
-CLASS_LABELS=0
+CLASS_LABELS=1
 
 args=(--phase 'prototrain_spct' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"
