@@ -23,7 +23,7 @@ if __name__ == '__main__':
                                'prototrain_spct'])
   
   parser.add_argument('--dataset', type=str, default='s3dis', help='Dataset name: s3dis|scannet')
-  parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting '
+  parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting'
                       'Options:{0,1}')
   parser.add_argument('--data_path', type=str, default='./datasets/S3DIS/blocks_bs1_s1',
                       help='Directory to the source data')
@@ -107,7 +107,7 @@ if __name__ == '__main__':
   args.base_widths = ast.literal_eval(args.base_widths)
   args.pc_in_dim = len(args.pc_attribs)
 
-  print('experiment logs are stored in log_<dataset> directory')
+  print('experiment logs are stored in "log_<dataset>" directory')
 
   # ********* choices of phase: corresponding functions and log directories *********
 
@@ -149,7 +149,7 @@ if __name__ == '__main__':
                                                                                         args.use_attention, now_str)
     from runs.proto_manifold_train import train
     train(args)
-  
+
   # -transformers-
   elif args.phase=='pretrain_spct':
     args.log_dir = args.save_path + 'log_pretrain_spct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)

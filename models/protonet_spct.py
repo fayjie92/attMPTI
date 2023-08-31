@@ -6,7 +6,7 @@ from models.PointCloudTransformer.model import SPCT
 class SegmentLearner(nn.Module):
   def __init__(self, n_pts, args):
     super().__init__()
-
+    
     self.n_pts = n_pts
     self.output_dim = args.output_dim
     self.cls_lbl = args.class_labels
@@ -44,11 +44,9 @@ class SegmentLearner(nn.Module):
     x = F.relu(x)
     # like a linear mapper
     #x = nn.Conv1d(256, self.output_dim, 1)
-
     #x = F.relu(self.bns1(self.convs1(x)))
     # x = self.dp1(x)
     #x = F.relu(self.bns2(self.convs2(x)))
-
     return x
     
 class ProtoNetSPCT(nn.Module):
@@ -136,12 +134,11 @@ class ProtoNetSPCT(nn.Module):
       fg_prototypes: a list of n_way foreground prototypes, each prototype is a vector with shape (feat_dim,)
       bg_prototype: background prototype, a vector with shape (feat_dim,)
     """
-    fg_prototypes = [fg_feat[way, ...].sum(
-      dim=0) / self.k_shot for way in range(self.n_way)]
+    fg_prototypes = [fg_feat[way, ...].sum(dim=0) / self.k_shot for way in range(self.n_way)]
     bg_prototype = bg_feat.sum(dim=(0, 1)) / (self.n_way * self.k_shot)
     return fg_prototypes, bg_prototype
 
-  def calculateSimilarity(self, feat,  prototype, method='cosine', scaler=10):
+  def calculateSimilarity(self, feat, prototype, method='cosine', scaler=10):
     """
     Calculate the Similarity between query point-level features and prototypes
 
@@ -163,8 +160,7 @@ class ProtoNetSPCT(nn.Module):
     elif method == 'euclidean':
       similarity = - F.pairwise_distance(feat, prototype[None, ..., None], p=2)**2
     else:
-      raise NotImplementedError(
-        'Error! Distance computation method (%s) is unknown!' % method)
+      raise NotImplementedError('Error! Distance computation method (%s) is unknown!' % method)
     return similarity
 
   def computeCrossEntropyLoss(self, query_logits, query_labels):

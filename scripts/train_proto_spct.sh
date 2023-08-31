@@ -40,7 +40,8 @@ args=(--phase 'prototrain_spct' --dataset "${DATASET}" --cvfold $SPLIT
       --pc_npts $NUM_POINTS --pc_attribs "$PC_ATTRIBS" --pc_augm
       --n_iters $NUM_ITERS --eval_interval $EVAL_INTERVAL --batch_size 1
       --lr $LR  --step_size $DECAY_STEP --gamma $DECAY_RATIO
-      --n_way $N_WAY --k_shot $K_SHOT --n_queries $N_QUERIES --n_episode_test $N_TEST_EPISODES)
+      --n_way $N_WAY --k_shot $K_SHOT --n_queries $N_QUERIES 
+      --n_episode_test $N_TEST_EPISODES)
 
 #CUDA_VISIBLE_DEVICES=$GPU_ID 
 venv/bin/python main.py "${args[@]}"

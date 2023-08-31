@@ -6,23 +6,19 @@ from utils.checkpoint_util import load_pretrain_checkpoint, load_model_checkpoin
 
 class ProtoSPCTLearner(object):
   def __init__(self, args, mode='train'):
-
     # init model and optimizer
     self.model = ProtoNetSPCT(args)
     print(self.model)
     if torch.cuda.is_available():
       self.model.cuda()
-
     if mode == 'train':
       self.optimizer = torch.optim.Adam(
         [{'params': self.model.encoder.parameters(), 'lr': 0.0001},
          {'params': self.model.segmentlearner.parameters()}], lr=args.lr)
-
       # set learning rate scheduler
       self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, 
                               step_size=args.step_size, 
                               gamma=args.gamma)
-      
       # load pretrained model for point cloud encoding
       self.model = load_pretrain_checkpoint(self.model, args.pretrain_checkpoint_path)
     elif mode == 'test':
@@ -42,10 +38,8 @@ class ProtoSPCTLearner(object):
       - query_x: query point clouds with shape (n_queries, in_channels, num_points)
       - query_y: query labels with shape (n_queries, num_points)
     """
-
     [support_x, support_y, query_x, query_y] = data
     self.model.train()
-
     query_logits, loss = self.model(support_x, support_y, query_x, query_y)
 
     self.optimizer.zero_grad()

@@ -1,6 +1,5 @@
 # pretrain point cloud transformer
 # modified version of pretrain for dgcnn by Zhao Na, @fayjie
-
 import os
 import numpy as np
 import torch
@@ -65,7 +64,6 @@ class SPCTSeg_ClassLabels(nn.Module):
     x = self.segmenter(x, x_max, x_mean, cls_label)
     return x
 
-
 def metric_evaluate(predicted_label, gt_label, NUM_CLASS):
   """
   :param predicted_label: (B,N) tensor
@@ -104,10 +102,10 @@ def pretrain(args):
 
   # Init datasets, dataloaders, and writer
   PC_AUGMENT_CONFIG = {'scale': args.pc_augm_scale,
-             'rot': args.pc_augm_rot,
-             'mirror_prob': args.pc_augm_mirror_prob,
-             'jitter': args.pc_augm_jitter
-             }
+                       'rot': args.pc_augm_rot,
+                       'mirror_prob': args.pc_augm_mirror_prob,
+                       'jitter': args.pc_augm_jitter
+                      }
 
   if args.dataset == 's3dis':
     from dataloaders.s3dis import S3DISDataset
@@ -153,15 +151,11 @@ def pretrain(args):
   if torch.cuda.is_available():
     model.cuda()
 
-  #optimizer = optim.Adam([{'params': model.backbone.parameters(), 'lr': args.pretrain_lr}, \
-  #                       {'params': model.fc2.parameters(), 'lr': args.pretrain_lr}], \
-  #                        weight_decay=args.pretrain_weight_decay)
-  
   # optimizer with same learning rate for the whole model @fayjie
   optimizer = torch.optim.Adam(model.parameters(), lr=args.pretrain_lr, 
-                 betas=(0.9, 0.999), eps=1e-08,
-                 weight_decay=args.pretrain_weight_decay
-                )
+                               betas=(0.9, 0.999), eps=1e-08,
+                               weight_decay=args.pretrain_weight_decay)
+  
   # Set learning rate scheduler
   lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.pretrain_step_size, gamma=args.pretrain_gamma)
 
@@ -222,8 +216,7 @@ def pretrain(args):
           pred_total.append(preds.cpu().detach())
 
           WRITER.add_scalar('Valid/loss', loss, global_iter)
-          logger.cprint(
-            '=====[Valid] Epoch: %d | Iter: %d | Loss: %.4f =====' % (epoch, i, loss.item()))
+          logger.cprint('=====[Valid] Epoch: %d | Iter: %d | Loss: %.4f =====' % (epoch, i, loss.item()))
 
       pred_total = torch.stack(pred_total, dim=0).view(-1, args.pc_npts)
       gt_total = torch.stack(gt_total, dim=0).view(-1, args.pc_npts)
