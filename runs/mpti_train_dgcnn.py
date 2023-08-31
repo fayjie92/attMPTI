@@ -1,6 +1,6 @@
-""" 
-Transductive Few-Shot Segmentation based on Prototypical Networks with Manifold Regularizer.
-Author: Abdur R. Fayjie & Umamaheswaran Raman Kumar 
+""" Attetion-aware Multi-Prototype Transductive Inference for Few-shot 3D Point Cloud Semantic Segmentation [Our method]
+
+Author: Zhao Na, 2020
 """
 import os
 import torch
@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from runs.eval import test_few_shot
 from dataloaders.loader import MyDataset, MyTestDataset, batch_test_task_collate
-from models.proto_manifold_learner import ProtoManifoldLearner
+from models.mpti_learner import MPTILearner
 from utils.cuda_util import cast_cuda
 from utils.logger import init_logger
 
@@ -17,12 +17,12 @@ from utils.logger import init_logger
 def train(args):
   logger = init_logger(args.log_dir, args)
 
-  # os.system('cp models/proto_learner.py %s' % (args.log_dir))
-  # os.system('cp models/task_learner.py %s' % (args.log_dir))
+  # os.system('cp models/mpti_learner.py %s' % (args.log_dir))
+  # os.system('cp models/mpti.py %s' % (args.log_dir))
   # os.system('cp models/dgcnn.py %s' % (args.log_dir))
 
   # init model and optimizer
-  PL = ProtoManifoldLearner(args)
+  MPTI = MPTILearner(args)
 
   #Init datasets, dataloaders, and writer
   PC_AUGMENT_CONFIG = {'scale': args.pc_augm_scale,
@@ -55,23 +55,24 @@ def train(args):
     if torch.cuda.is_available():
       data = cast_cuda(data)
 
-    loss, accuracy = PL.train(data)
+    loss, accuracy = MPTI.train(data)
 
-    logger.cprint('=====[Train] Iter: %d | Loss: %.4f | Accuracy: %f =====' % (batch_idx, loss, accuracy))
+    logger.cprint('==[Train] Iter: %d | Loss: %.4f |  Accuracy: %f  ==' % (batch_idx, loss, accuracy))
     WRITER.add_scalar('Train/loss', loss, batch_idx)
     WRITER.add_scalar('Train/accuracy', accuracy, batch_idx)
 
     if (batch_idx+1) % args.eval_interval == 0:
 
-      valid_loss, mean_IoU = test_few_shot(VALID_LOADER, PL, logger, VALID_CLASSES)
-      logger.cprint('\n=====[VALID] Loss: %.4f | Mean IoU: %f =====\n' % (valid_loss, mean_IoU))
+      valid_loss, mean_IoU = test_few_shot(VALID_LOADER, MPTI, logger, VALID_CLASSES)
+      logger.cprint('\n=====[VALID] Loss: %.4f | Mean IoU: %f  =====\n' % (valid_loss, mean_IoU))
       WRITER.add_scalar('Valid/loss', valid_loss, batch_idx)
       WRITER.add_scalar('Valid/meanIoU', mean_IoU, batch_idx)
       if mean_IoU > best_iou:
         best_iou = mean_IoU
         logger.cprint('*******************Model Saved*******************')
         save_dict = {'iteration': batch_idx + 1,
-               'model_state_dict': PL.model.state_dict(),
+               'model_state_dict': MPTI.model.state_dict(),
+               'optimizer_state_dict': MPTI.optimizer.state_dict(),
                'loss': valid_loss,
                'IoU': best_iou
                }

@@ -1,57 +1,52 @@
-# pretrain point cloud transformer
-# modified version of pretrain for dgcnn by Zhao Na, @fayjie
+""" Pre-train phase
+
+Author: Zhao Na, 2020
+"""
 
 import os
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+
 from dataloaders.loader import MyPretrainDataset
+from models.dgcnn import DGCNN
 from utils.logger import init_logger
 from utils.checkpoint_util import save_pretrain_checkpoint
-from models.PointCloudTransformer.model import PCT, NaivePCT, SPCT, SegmentationHead, Segmentation
 
-# Note: Segmentation Networks without class labels
-# modified @fayjie
 
-class NaivePCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = NaivePCT()
-    self.segmenter = SegmentationHead(num_class)
+class DGCNNSeg(nn.Module):
+  def __init__(self, args, num_classes):
+    super(DGCNNSeg, self).__init__()
+    self.encoder = DGCNN(args.edgeconv_widths, args.dgcnn_mlp_widths, args.pc_in_dim, k=args.dgcnn_k, return_edgeconvs=True)
+    in_dim = args.dgcnn_mlp_widths[-1]
+    for edgeconv_width in args.edgeconv_widths:
+      in_dim += edgeconv_width[-1]
+    self.segmenter = nn.Sequential(
+              nn.Conv1d(in_dim, 256, 1, bias=False),
+              nn.BatchNorm1d(256),
+              nn.LeakyReLU(0.2),
+              nn.Conv1d(256, 128, 1),
+              nn.BatchNorm1d(128),
+              nn.LeakyReLU(0.2),
+              nn.Dropout(0.3),
+              nn.Conv1d(128, num_classes, 1)
+             )
 
-  def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
-    return x
+  def forward(self, pc):
+    num_points = pc.shape[2]
+    edgeconv_feats, point_feat = self.encoder(pc)
+    global_feat = point_feat.max(dim=-1, keepdim=True)[0]
+    edgeconv_feats.append(global_feat.expand(-1,-1,num_points))
+    pc_feat = torch.cat(edgeconv_feats, dim=1)
 
-class SPCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = SPCT()
-    self.segmenter = SegmentationHead(num_class)
+    logits = self.segmenter(pc_feat)
+    return logits
 
-  def forward(self, x, cls_label):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean, cls_label)
-    return x
-
-class PCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = PCT(samples=[1024, 2048])
-    self.segmenter = SegmentationHead(num_class)
-
-  def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
-    return x
 
 def metric_evaluate(predicted_label, gt_label, NUM_CLASS):
   """
@@ -84,7 +79,9 @@ def metric_evaluate(predicted_label, gt_label, NUM_CLASS):
     iou_list.append(iou_class)
 
   mean_IoU = np.array(iou_list[1:]).mean()
+
   return oa, mean_IoU, iou_list
+
 
 def pretrain(args):
   logger = init_logger(args.log_dir, args)
@@ -129,20 +126,14 @@ def pretrain(args):
   WRITER = SummaryWriter(log_dir=args.log_dir)
 
   # Init model and optimizer
-  model = PCTSeg(NUM_CLASSES)
+  model = DGCNNSeg(args, num_classes=NUM_CLASSES)
   print(model)
   if torch.cuda.is_available():
     model.cuda()
 
-  #optimizer = optim.Adam([{'params': model.backbone.parameters(), 'lr': args.pretrain_lr}, \
-  #                       {'params': model.fc2.parameters(), 'lr': args.pretrain_lr}], \
-  #                        weight_decay=args.pretrain_weight_decay)
-  
-  # optimizer with same learning rate for the whole model @fayjie
-  optimizer = torch.optim.Adam(model.parameters(), lr=args.pretrain_lr, 
-                 betas=(0.9, 0.999), eps=1e-08,
-                 weight_decay=args.pretrain_weight_decay
-                )
+  optimizer = optim.Adam([{'params': model.encoder.parameters(), 'lr': args.pretrain_lr}, \
+               {'params': model.segmenter.parameters(), 'lr': args.pretrain_lr}], \
+              weight_decay=args.pretrain_weight_decay)
   # Set learning rate scheduler
   lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.pretrain_step_size, gamma=args.pretrain_gamma)
 
@@ -170,7 +161,7 @@ def pretrain(args):
 
     lr_scheduler.step()
 
-    if (epoch+1) % args.eval_interval == 0:
+    if (epoch) % args.eval_interval == 0:
       pred_total = []
       gt_total = []
       model.eval()
@@ -181,7 +172,7 @@ def pretrain(args):
           if torch.cuda.is_available():
             ptclouds = ptclouds.cuda()
             labels = labels.cuda()
-          
+
           logits = model(ptclouds)
           loss = F.cross_entropy(logits, labels)
 

@@ -1,35 +1,25 @@
-""" 
-Transductive Few-Shot Segmentation based on Prototypical Networks with Manifold Regularizer.
-Author: Abdur R. Fayjie & Umamaheswaran Raman Kumar 
-"""
 import torch
 from torch import optim
 from torch.nn import functional as F
-
-from models.protonet_manifold import ProtoNetManifold
+from models.protonet_spct_manifold import ProtoNetManifoldSPCT
 from utils.checkpoint_util import load_pretrain_checkpoint, load_model_checkpoint
 
-
-class ProtoManifoldLearner(object):
+class ProtoSPCTManifoldLearner(object):
   def __init__(self, args, mode='train'):
 
     # init model and optimizer
-    self.model = ProtoNetManifold(args)
+    self.model = ProtoNetManifoldSPCT(args)
     print(self.model)
     if torch.cuda.is_available():
       self.model.cuda()
 
-    if mode=='train':
-      if args.use_attention:
-        self.optimizer = torch.optim.Adam(
-          [{'params': self.model.encoder.parameters(), 'lr': 0.0001},
-           {'params': self.model.base_learner.parameters()},
-           {'params': self.model.att_learner.parameters()}], lr=args.lr)
-      else:
-        self.optimizer = torch.optim.Adam(
-          [{'params': self.model.encoder.parameters(), 'lr': 0.0001},
-           {'params': self.model.base_learner.parameters()},
-           {'params': self.model.linear_mapper.parameters()}], lr=args.lr)
+    if mode=='train':    
+      self.optimizer = torch.optim.Adam(
+        [{'params': self.model.encoder.parameters(), 'lr': 0.0001},
+         {'params': self.model.featlearner.parameters(), 'lr': 0.0001},
+         {'params': self.model.base_learner.parameters()},
+         {'params': self.model.linear_mapper.parameters()}], lr=args.lr)
+
       #set learning rate scheduler
       self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=args.step_size,
                               gamma=args.gamma)
@@ -54,7 +44,7 @@ class ProtoManifoldLearner(object):
     [support_x, support_y, query_x, query_y] = data
     self.model.train()
 
-    query_logits, loss = self.model(support_x, support_y, query_x, query_y)
+    query_logits, loss, loss1, loss2, mu = self.model(support_x, support_y, query_x, query_y)
 
     self.optimizer.zero_grad()
     loss.backward()
@@ -66,8 +56,7 @@ class ProtoManifoldLearner(object):
     correct = torch.eq(query_pred, query_y).sum().item()  # including background class
     accuracy = correct / (query_y.shape[0]*query_y.shape[1])
 
-    return loss, accuracy
-
+    return loss, accuracy, loss1, loss2, mu
 
   def test(self, data):
     """
@@ -81,12 +70,12 @@ class ProtoManifoldLearner(object):
     self.model.eval()
 
     with torch.no_grad():
-      logits, loss = self.model(support_x, support_y, query_x, query_y)
+      logits, loss, loss1, loss2, mu = self.model(support_x, support_y, query_x, query_y)
       pred = F.softmax(logits, dim=1).argmax(dim=1)
       correct = torch.eq(pred, query_y).sum().item()
       accuracy = correct / (query_y.shape[0]*query_y.shape[1])
 
-    return pred, loss, accuracy
+    return pred, loss, accuracy, loss1, loss2, mu
   
 
     

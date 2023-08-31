@@ -1,28 +1,18 @@
-""" 
-Transductive Few-Shot Segmentation based on Prototypical Networks with Manifold Regularizer.
-Author: Abdur R. Fayjie & Umamaheswaran Raman Kumar 
-"""
 import os
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-
 from runs.eval import test_few_shot
 from dataloaders.loader import MyDataset, MyTestDataset, batch_test_task_collate
-from models.proto_manifold_learner import ProtoManifoldLearner
+from models.proto_spct_manifold_learner import ProtoSPCTManifoldLearner
 from utils.cuda_util import cast_cuda
 from utils.logger import init_logger
-
 
 def train(args):
   logger = init_logger(args.log_dir, args)
 
-  # os.system('cp models/proto_learner.py %s' % (args.log_dir))
-  # os.system('cp models/task_learner.py %s' % (args.log_dir))
-  # os.system('cp models/dgcnn.py %s' % (args.log_dir))
-
   # init model and optimizer
-  PL = ProtoManifoldLearner(args)
+  PL = ProtoSPCTManifoldLearner(args)
 
   #Init datasets, dataloaders, and writer
   PC_AUGMENT_CONFIG = {'scale': args.pc_augm_scale,
@@ -55,9 +45,10 @@ def train(args):
     if torch.cuda.is_available():
       data = cast_cuda(data)
 
-    loss, accuracy = PL.train(data)
+    loss, accuracy, loss1, loss2, mu = PL.train(data)
 
-    logger.cprint('=====[Train] Iter: %d | Loss: %.4f | Accuracy: %f =====' % (batch_idx, loss, accuracy))
+    #logger.cprint('=====[Train] Iter: %d | Loss: %.4f | Accuracy: %f =====' % (batch_idx, loss, accuracy))
+    logger.cprint('=====[Train] Iter: %d | Loss: %.4f | Accuracy: %f | loss1: %.4f | loss2: %.4f | mu %.2f =====' % (batch_idx, loss, accuracy, loss1, loss2, mu))
     WRITER.add_scalar('Train/loss', loss, batch_idx)
     WRITER.add_scalar('Train/accuracy', accuracy, batch_idx)
 
