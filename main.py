@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     #data
     parser.add_argument('--phase', type=str, default='prototrain_spct', 
-                        choices=['pretrain_spct', 'prototrain_spct', 'protomanifoldtrain_spct'])
+                        choices=['pretrain_spct', 'prototrain_spct', 'protofoldtrain_spct'])
     
     parser.add_argument('--dataset', type=str, default='s3dis', help='Dataset name: s3dis|scannet')
     parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting '
@@ -106,16 +106,25 @@ if __name__ == '__main__':
     print('Log files are created in log_<dataset> directory')
     
     if args.phase=='pretrain_spct':
-        args.log_dir = args.save_path + 'log_pretrain_spct%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
-        from runs.pre_train import pretrain
+        args.log_dir = args.save_path + 'pretrain_spct%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+        from runs.pre_train_spct import pretrain
         pretrain(args)
     elif args.phase=='prototrain_spct':
-        args.log_dir = args.save_path + 'log_pretrain_spct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+        args.log_dir = args.save_path + 'prototrain_spct_%s_S%d_N%d_K%d_T%s' % (args.dataset, 
+                                                                                args.cvfold,
+                                                                                args.n_way,
+                                                                                args.k_shot, 
+                                                                                now_str)
         from runs.proto_train_spct import train
-        pretrain_spct(args)
-    elif args.phase=='protrainmanifold_spct':
-        args.log_dir = args.save_path + 'log_pretrain_spct_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
-        from runs.pre_train_spct import pretrain_spct
-        pretrain_spct(args)   
+        train(args)
+    #elif args.phase=='protofoldtrain_spct':
+        #args.log_dir = args.save_path + 'protofoldtrain_spct_%s_S%d_N%d_K%d_T%s' % (args.dataset, 
+                                                                                    #args.cvfold, 
+                                                                                    #args.n_way,
+                                                                                    #args.k_shot,
+                                                                                    #now_str)
+        #from runs.pre_train_spct import pretrain_spct
+        #pretrain_spct(args)   
     else:
         raise ValueError('Please set correct phase.')
+ 
