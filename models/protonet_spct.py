@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 #from models.PointCloudTransformer.model import SPCT
-from models.PointCloudTransformer.module import Embedding, NeighborEmbedding, OA, SA
+from models.PointCloudTransformer.module import Embedding, OA
+# triplet margin loss with distance
+from pytorch_metric_learning import losses
 
 # *************** Encoder: SPCT ******************
 
@@ -54,7 +56,7 @@ class SegmentHead(nn.Module):
     self.bns1 = nn.BatchNorm1d(512)
     self.bns2 = nn.BatchNorm1d(256)
     self.bns3 = nn.BatchNorm1d(128)
-    self.bns2 = nn.BatchNorm1d(64)
+    self.bns4 = nn.BatchNorm1d(64)
     self.dp1 = nn.Dropout(0.5)
 
   def forward(self, x, cls_label):
@@ -65,14 +67,16 @@ class SegmentHead(nn.Module):
 
       x = torch.cat([x, cls_label_feature], dim=1) 
     else:
-      x = x     
+      x = x 
+
+    #breakpoint() 
     x1 = F.relu(self.bns1(self.convs1(x)))
     x1 = self.dp1(x1)
     x2 = F.relu(self.bns2(self.convs2(x1)))
     x2 = self.dp1(x2)
-    x3 = F.relu(self.bns2(self.convs3(x2)))
+    x3 = F.relu(self.bns3(self.convs3(x2)))
     x3 = self.dp1(x3)
-    x4 = F.relu(self.bns2(self.convs4(x3)))
+    x4 = F.relu(self.bns4(self.convs4(x3)))
     x4 = self.dp1(x4)
     x_all = torch.cat([x, x1, x2, x3, x4], dim=1)
 
@@ -127,7 +131,7 @@ class ProtoNetSPCT(nn.Module):
     query_pred = torch.stack(similarity, dim=1)
 
     loss = self.computeCrossEntropyLoss(query_pred, query_y)
-
+  
     return query_pred, loss
 
   def getFeatures(self, x, cls_lbl):
@@ -198,3 +202,4 @@ class ProtoNetSPCT(nn.Module):
     """ Calculate the CrossEntropy Loss for query set
     """
     return F.cross_entropy(query_logits, query_labels)
+  

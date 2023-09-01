@@ -13,8 +13,9 @@ class ProtoSPCTLearner(object):
       self.model.cuda()
     if mode == 'train':
       self.optimizer = torch.optim.Adam(
-        [{'params': self.model.encoder.parameters(), 'lr': 0.0001},
-         {'params': self.model.segmentlearner.parameters()}], lr=args.lr)
+        [{'params': self.model.encoder.parameters(), 'lr': 0.0001,},
+         {'params': self.model.segmentlearner.parameters()}], lr=args.lr, 
+           betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-2)
       # set learning rate scheduler
       self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, 
                               step_size=args.step_size, 
@@ -26,8 +27,7 @@ class ProtoSPCTLearner(object):
       self.model = load_model_checkpoint(
         self.model, args.model_checkpoint_path, mode='test')
     else:
-      raise ValueError(
-        'Wrong Learner mode (%s)! Option:train/test' % mode)
+      raise ValueError('Wrong Learner mode (%s)! Option:train/test' % mode)
 
   def train(self, data):
     """

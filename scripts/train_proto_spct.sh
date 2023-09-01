@@ -12,7 +12,7 @@ PC_ATTRIBS='xyzrgbXYZ'
 # Pretrained checkpoints
 # log_pretrain_spct_s3dis_S0_T25082023_012142 -> 72% : SPCT : 2048 pts 
 # log_pretrain_spct_s3dis_S0_T25082023_051904 -> 81% : SPCT : 2048 pts : cls_lbl
-PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_051904'
+PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_012142' 
 
 # Prototypical Network settings
 N_WAY=3

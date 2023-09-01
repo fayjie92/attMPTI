@@ -6,13 +6,13 @@ DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 
 NUM_POINTS=1024  # default 2048
-PC_ATTRIBS='xyz'
+PC_ATTRIBS='xyzrgbXYZ'
 EDGECONV_WIDTHS='[[64,64], [64, 64], [64, 64]]'
 MLP_WIDTHS='[512, 256]'
 K=20
 BASE_WIDTHS='[128, 64]'
 
-PRETRAIN_CHECKPOINT='./log_s3dis/log_pretrain_s3dis_S0'
+PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_dgcnn_s3dis_S0_T25082023_003739'
 N_WAY=1
 K_SHOT=1
 N_QUESIES=1
@@ -29,7 +29,7 @@ K_CONNECT=200
 SIM_FUNCTION='cosine'
 SIGMA=1
 
-args=(--phase 'prototrain' --dataset "${DATASET}" --cvfold $SPLIT
+args=(--phase 'prototrain_dgcnn' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"
       --pretrain_checkpoint_path "$PRETRAIN_CHECKPOINT" 
       --n_subprototypes $N_SUBPROTOTYPES  --k_connect $K_CONNECT
