@@ -71,16 +71,14 @@ class SegmentHead(nn.Module):
 
     #breakpoint() 
     x1 = F.relu(self.bns1(self.convs1(x)))
-    x1 = self.dp1(x1)
+    #x1 = self.dp1(x1)
     x2 = F.relu(self.bns2(self.convs2(x1)))
-    x2 = self.dp1(x2)
+    #x2 = self.dp1(x2)
     x3 = F.relu(self.bns3(self.convs3(x2)))
-    x3 = self.dp1(x3)
+    #x3 = self.dp1(x3)
     x4 = F.relu(self.bns4(self.convs4(x3)))
-    x4 = self.dp1(x4)
-    x_all = torch.cat([x, x1, x2, x3, x4], dim=1)
 
-    return x_all
+    return x4
   
 # *************** Prototypical Networks with SPCT encoder and Segmentation Head ***************
     

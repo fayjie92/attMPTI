@@ -3,7 +3,7 @@
 
 # Dataset settings
 DATASET='s3dis'
-SPLIT=0
+SPLIT=1
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 NUM_POINTS=2048  
@@ -12,7 +12,8 @@ PC_ATTRIBS='xyzrgbXYZ'
 # Pretrained checkpoints
 # log_pretrain_spct_s3dis_S0_T25082023_012142 -> 72% : SPCT : 2048 pts 
 # log_pretrain_spct_s3dis_S0_T25082023_051904 -> 81% : SPCT : 2048 pts : cls_lbl
-PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_012142' 
+# PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_012142' 
+PRETRAIN_CHECKPOINT='./log_s3dis/log_pretrain_spct_s3dis_S0_T01092023_181358' 
 
 # Prototypical Network settings
 N_WAY=3
@@ -23,7 +24,7 @@ DIST_METHOD='cosine'  # choice ['cosune', 'euclidean']
 
 # Training settings
 NUM_ITERS=40000
-EVAL_INTERVAL=1000
+EVAL_INTERVAL=200
 LR=0.001   
 DECAY_STEP=5000
 DECAY_RATIO=0.5
@@ -31,7 +32,7 @@ DECAY_RATIO=0.5
 # Settings specific to SPCT (transformer)
 # NBLOCKS=4  # currently not in use
 # NNEIGHBOR=16  # currently not in use
-CLASS_LABELS=1
+CLASS_LABELS=0
 
 args=(--phase 'prototrain_spct' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"

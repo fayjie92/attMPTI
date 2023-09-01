@@ -313,7 +313,7 @@ class PCTSeg(nn.Module):
   def __init__(self, part_num=50):
     super().__init__()
   
-    self.encoder = PCT(samples=[1024, 1024])
+    self.encoder = PCT(samples=[2048, 2048])
     self.seg = Segmentation(part_num)
 
   def forward(self, x, cls_label):
