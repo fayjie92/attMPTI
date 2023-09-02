@@ -13,13 +13,18 @@ class ProtoSPCTLearner(object):
       self.model.cuda()
     if mode == 'train':
       self.optimizer = torch.optim.Adam(
-        [{'params': self.model.encoder.parameters(), 'lr': 0.0001,},
-         {'params': self.model.segmentlearner.parameters()}], lr=args.lr, 
-           betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
+        [{'params': self.model.encoder.parameters(), 'lr': 0.00001,},
+         {'params': self.model.segmentlearner.parameters()}], lr=args.lr) 
+           #betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-4)
       # set learning rate scheduler
-      self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, 
-                              step_size=args.step_size, 
-                              gamma=args.gamma)
+      # self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, 
+                              #step_size=args.step_size, 
+                              #gamma=args.gamma)
+      self.lr_scheduler = optim.lr_scheduler.CyclicLR(self.optimizer, 
+                                              base_lr=0.0001, 
+                                              max_lr=0.001, 
+                                              step_size_up=1000, 
+                                              cycle_momentum=False)
       # load pretrained model for point cloud encoding
       self.model = load_pretrain_checkpoint(self.model, args.pretrain_checkpoint_path)
     elif mode == 'test':

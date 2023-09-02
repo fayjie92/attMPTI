@@ -1,10 +1,10 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 #from models.PointCloudTransformer.model import SPCT
 from models.PointCloudTransformer.module import Embedding, OA
-# triplet margin loss with distance
-from pytorch_metric_learning import losses
+from models.PointCloudTransformer.losses import PointNetSegLoss
 
 # *************** Encoder: SPCT ******************
 
@@ -69,13 +69,9 @@ class SegmentHead(nn.Module):
     else:
       x = x 
 
-    #breakpoint() 
     x1 = F.relu(self.bns1(self.convs1(x)))
-    #x1 = self.dp1(x1)
     x2 = F.relu(self.bns2(self.convs2(x1)))
-    #x2 = self.dp1(x2)
     x3 = F.relu(self.bns3(self.convs3(x2)))
-    #x3 = self.dp1(x3)
     x4 = F.relu(self.bns4(self.convs4(x3)))
 
     return x4
@@ -125,11 +121,15 @@ class ProtoNetSPCT(nn.Module):
     # non-parametric metric learning
     similarity = [self.calculateSimilarity(query_feat, prototype, self.dist_method) for prototype in prototypes]
 
-    # (n_queries, n_way+1, num_points)
+    # get predicted class logits (n_queries, n_way+1, num_points)
     query_pred = torch.stack(similarity, dim=1)
+    
+    # get class predictions
+    pred_choice = torch.softmax(query_pred, dim=1).argmax(dim=1)
 
-    loss = self.computeCrossEntropyLoss(query_pred, query_y)
-  
+    #loss = self.computeCrossEntropyLoss(query_pred, query_y)
+    loss = self.computeFocalDiceLoss(self.n_way, query_pred, query_y, pred_choice)
+
     return query_pred, loss
 
   def getFeatures(self, x, cls_lbl):
@@ -200,4 +200,17 @@ class ProtoNetSPCT(nn.Module):
     """ Calculate the CrossEntropy Loss for query set
     """
     return F.cross_entropy(query_logits, query_labels)
+  
+  def computeFocalDiceLoss(self, num_class, query_logits, query_labels, pred_choice):
+    ''' Calculate the focal+dice loss for query set
+    '''
+    alpha = torch.ones(num_class+1)
+    alpha[-1] = 0.15 # background class
+    alpha = alpha.to('cuda')
+
+    gamma =1
+    
+    criterion = PointNetSegLoss(alpha, gamma, size_average=True, dice=True)
+    
+    return criterion(query_logits, query_labels, pred_choice)
   
