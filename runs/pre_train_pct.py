@@ -12,45 +12,19 @@ from torch.utils.tensorboard import SummaryWriter
 from dataloaders.loader import MyPretrainDataset
 from utils.logger import init_logger
 from utils.checkpoint_util import save_pretrain_checkpoint
-from models.PointCloudTransformer.model import PCT, NaivePCT, SPCT, SegmentationHead, Segmentation
+from models.PointCloudTransformer.fss_transformer import PCT_pretrain, SegmentationHead
 
-# Note: Segmentation Networks without class labels
-# modified @fayjie
-
-class NaivePCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = NaivePCT()
-    self.segmenter = SegmentationHead(num_class)
-
-  def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
-    return x
-
-class SPCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = SPCT()
-    self.segmenter = SegmentationHead(num_class)
-
-  def forward(self, x, cls_label):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean, cls_label)
-    return x
 
 class PCTSeg(nn.Module):
   def __init__(self, num_class):
     super().__init__()
   
-    self.encoder = PCT(samples=[1024, 2048])
+    self.encoder = PCT_pretrain(samples=[2048, 2048])
     self.segmenter = SegmentationHead(num_class)
 
   def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
+    x = self.encoder(x)
+    x = self.segmenter(x)
     return x
 
 def metric_evaluate(predicted_label, gt_label, NUM_CLASS):
@@ -130,7 +104,7 @@ def pretrain(args):
 
   # Init model and optimizer
   model = PCTSeg(NUM_CLASSES)
-  print(model)
+  # print(model)
   if torch.cuda.is_available():
     model.cuda()
 
@@ -153,6 +127,7 @@ def pretrain(args):
     model.train()
     for batch_idx, (ptclouds, labels) in enumerate(TRAIN_LOADER):
       if torch.cuda.is_available():
+        ptclouds = ptclouds[:, :3, :]
         ptclouds = ptclouds.cuda()
         labels = labels.cuda()
 
@@ -179,6 +154,7 @@ def pretrain(args):
           gt_total.append(labels.detach())
 
           if torch.cuda.is_available():
+            ptclouds = ptclouds[:, :3, :]
             ptclouds = ptclouds.cuda()
             labels = labels.cuda()
           

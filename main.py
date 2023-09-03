@@ -19,7 +19,8 @@ if __name__ == '__main__':
                                'mptitrain_dgcnn', 'mptieval_dgcnn', 
                                'protofoldtrain_dgcnn',
                                'pretrain_spct','pretrain_naivepct','pretrain_pct',
-                               'prototrain_spct'])
+                               'prototrain_spct',
+                               'pretrain_pointnet2'])
   
   parser.add_argument('--dataset', type=str, default='s3dis', help='Dataset name: s3dis|scannet')
   parser.add_argument('--cvfold', type=int, default=0, help='Fold left-out for testing in leave-one-out setting'
@@ -167,5 +168,12 @@ if __name__ == '__main__':
                                                                                 args.n_way, args.k_shot, now_str)
     from runs.proto_train_spct import train
     train(args) 
+  
+  # -pointnet2-
+  elif args.phase=='pretrain_pointnet2':
+    args.log_dir = args.save_path + 'log_pretrain_pointnet2_%s_S%d_T%s' % (args.dataset, args.cvfold, now_str)
+    from runs.pre_train_pointnet2 import pretrain
+    pretrain(args)
+
   else:
     raise ValueError('Please set correct phase.')
