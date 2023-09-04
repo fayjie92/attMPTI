@@ -1,11 +1,11 @@
-GPU_ID=0
+#GPU_ID=0
 
 DATASET='s3dis'
 SPLIT=0
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 
-NUM_POINTS=1024  # default 2048
+NUM_POINTS=2048 
 PC_ATTRIBS='xyzrgbXYZ'
 EDGECONV_WIDTHS='[[64,64], [64, 64], [64, 64]]'
 MLP_WIDTHS='[512, 256]'
@@ -13,9 +13,9 @@ K=20
 BASE_WIDTHS='[128, 64]'
 
 PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_dgcnn_s3dis_S0_T25082023_003739'
-N_WAY=1
-K_SHOT=1
-N_QUESIES=1
+N_WAY=3
+K_SHOT=5
+N_QUERIES=1
 N_TEST_EPISODES=100
 
 NUM_ITERS=40000
@@ -39,6 +39,7 @@ args=(--phase 'prototrain_dgcnn' --dataset "${DATASET}" --cvfold $SPLIT
       --dgcnn_mlp_widths "$MLP_WIDTHS" --base_widths "$BASE_WIDTHS" 
       --n_iters $NUM_ITERS --eval_interval $EVAL_INTERVAL --batch_size 1
       --lr $LR  --step_size $DECAY_STEP --gamma $DECAY_RATIO
-      --n_way $N_WAY --k_shot $K_SHOT --n_queries $N_QUESIES --n_episode_test $N_TEST_EPISODES)
+      --n_way $N_WAY --k_shot $K_SHOT --n_queries $N_QUERIES --n_episode_test $N_TEST_EPISODES)
 
-CUDA_VISIBLE_DEVICES=$GPU_ID python main.py "${args[@]}"
+#CUDA_VISIBLE_DEVICES=$GPU_ID 
+venv/bin/python main.py "${args[@]}"

@@ -5,7 +5,7 @@ Author: Zhao Na, 2020
 import torch
 from torch import optim
 from torch.nn import functional as F
-
+from torchmetrics.classification import MulticlassMatthewsCorrCoef
 from models.protonet import ProtoNet
 from utils.checkpoint_util import load_pretrain_checkpoint, load_model_checkpoint
 

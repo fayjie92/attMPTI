@@ -151,7 +151,6 @@ class ProtoNet(nn.Module):
             shape: (n_queries, 1, num_points)
     """
     if method == 'cosine':
-      breakpoint()
       similarity = F.cosine_similarity(feat, prototype[None, ..., None], dim=1) * scaler
     elif method == 'euclidean':
       similarity = - F.pairwise_distance(feat, prototype[None, ..., None], p=2)**2

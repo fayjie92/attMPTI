@@ -29,7 +29,7 @@ K_CONNECT=200
 SIM_FUNCTION='cosine'
 SIGMA=1
 
-args=(--phase 'protomanifold' --dataset "${DATASET}" --cvfold $SPLIT
+args=(--phase 'protofoldtrain_dgcnn' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"
       --pretrain_checkpoint_path "$PRETRAIN_CHECKPOINT" 
       --n_subprototypes $N_SUBPROTOTYPES  --k_connect $K_CONNECT
