@@ -1,0 +1,10 @@
+Sept 4: 12:56 AM
+-> pointnet2 pretrain
+
+-> pointnet2 prototypical networks
+- pointnet2 prototypical networks + losses: 
+  - cross_etropy
+  - nll_loss
+  -> focal+dice
+
+- Need to fix euclidean distance
