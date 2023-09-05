@@ -3,7 +3,7 @@
 
 # Dataset settings
 DATASET='s3dis'
-SPLIT=0
+SPLIT=1
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 NUM_POINTS=2048  
@@ -19,20 +19,21 @@ PC_AUGM_JITTER=1
 # Pretrained checkpoints
 # log_pretrain_spct_s3dis_S0_T25082023_012142 -> 72% : SPCT : 2048 pts 
 # log_pretrain_spct_s3dis_S0_T25082023_051904 -> 81% : SPCT : 2048 pts : cls_lbl
-PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_012142' 
+#PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T25082023_012142' 
 #PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T01092023_181358' 
+PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_spct_s3dis_S0_T04092023_164418_Tiny_Segmentor'
 
 # Prototypical Network settings
-N_WAY=2
-K_SHOT=1
+N_WAY=3
+K_SHOT=5
 N_QUERIES=1
 N_TEST_EPISODES=100
 DIST_METHOD='cosine'  # choice ['cosune', 'euclidean']
 
 # Training settings
 NUM_ITERS=40000
-EVAL_INTERVAL=100
-LR=0.0001   
+EVAL_INTERVAL=200
+LR=0.001   
 DECAY_STEP=5000
 DECAY_RATIO=0.5
 

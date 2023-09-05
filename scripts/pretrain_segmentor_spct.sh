@@ -20,8 +20,8 @@ DECAY_STEP=50
 DECAY_RATIO=0.5
 
 # settings specific to SPCT (transformer)
-NBLOCKS=4
-NNEIGHBOR=16
+#NBLOCKS=4
+#NNEIGHBOR=16
 CLASS_LABELS=0
 
 
@@ -32,6 +32,6 @@ args=(--phase 'pretrain_spct' --dataset "${DATASET}" --cvfold $SPLIT
       --batch_size $BATCH_SIZE --n_workers $NUM_WORKERS
       --pretrain_lr $LR --pretrain_weight_decay $WEIGHT_DECAY
       --pretrain_step_size $DECAY_STEP --pretrain_gamma $DECAY_RATIO
-      --nblocks $NBLOCKS --nneighbor $NNEIGHBOR --class_labels $CLASS_LABELS)
+      --class_labels $CLASS_LABELS)
 
 CUDA_VISIBLE_DEVICES=$GPU_ID venv/bin/python3 main.py "${args[@]}"

@@ -18,3 +18,4 @@ log_s3dis_14_08_23/
 log_s3dis_18_08_23/
 old_logs/*
 *.bak
+models/Pointnet_Pointnet2_pytorch

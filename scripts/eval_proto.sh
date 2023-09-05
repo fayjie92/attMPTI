@@ -1,7 +1,7 @@
 #GPU_ID=0
 
 DATASET='s3dis'
-SPLIT=1
+SPLIT=0
 DATA_PATH='./datasets/S3DIS/blocks_bs1_s1'
 SAVE_PATH='./log_s3dis/'
 
@@ -12,7 +12,7 @@ MLP_WIDTHS='[512, 256]'
 K=20
 BASE_WIDTHS='[128, 64]'
 
-PRETRAIN_CHECKPOINT='./pretrained/log_pretrain_dgcnn_s3dis_S0_T25082023_003739'
+MODEL_CHECKPOINT='./log_s3dis/log_prototrain_dgcnns3dis_S0_N3_K5_Att0_T04092023_110922'
 N_WAY=3
 K_SHOT=5
 N_QUERIES=1
@@ -29,7 +29,7 @@ K_CONNECT=200
 SIM_FUNCTION='cosine'
 SIGMA=1
 
-args=(--phase 'prototrain_dgcnn' --dataset "${DATASET}" --cvfold $SPLIT
+args=(--phase 'protoeval_dgcnn' --dataset "${DATASET}" --cvfold $SPLIT
       --data_path  "$DATA_PATH" --save_path "$SAVE_PATH"
       --pretrain_checkpoint_path "$PRETRAIN_CHECKPOINT" --use_attention
       --n_subprototypes $N_SUBPROTOTYPES  --k_connect $K_CONNECT

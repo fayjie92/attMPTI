@@ -11,46 +11,21 @@ from torch.utils.tensorboard import SummaryWriter
 from dataloaders.loader import MyPretrainDataset
 from utils.logger import init_logger
 from utils.checkpoint_util import save_pretrain_checkpoint
-from models.PointCloudTransformer.model import PCT, NaivePCT, SPCT, SegmentationHead, Segmentation
+from models.PointCloudTransformer.model import SPCT, TinySegmentor, Segmentation
 
 # ********* Segmentation Networks without class labels *********
-
-class NaivePCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = NaivePCT()
-    self.segmenter = SegmentationHead(num_class)
-
-  def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
-    return x
-
 class SPCTSeg(nn.Module):
   def __init__(self, num_class):
     super().__init__()
   
     self.encoder = SPCT()
-    self.segmenter = SegmentationHead(num_class)
+    self.segmenter = TinySegmentor(num_class)
 
   def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
+    x_cat, x = self.encoder(x)
+    x = self.segmenter(x_cat)
     return x
 
-class PCTSeg(nn.Module):
-  def __init__(self, num_class):
-    super().__init__()
-  
-    self.encoder = PCT(samples=[1024, 1024])
-    self.segmenter = SegmentationHead(num_class)
-
-  def forward(self, x):
-    x, x_max, x_mean = self.encoder(x)
-    x = self.segmenter(x, x_max, x_mean)
-    return x
-  
 # ********* Segmentation model with class labels: one-hot labels *********
 class SPCTSeg_ClassLabels(nn.Module):
   def __init__(self, num_class):

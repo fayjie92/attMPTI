@@ -6,8 +6,9 @@ import torch.nn.functional as F
 from models.PointCloudTransformer.module import Embedding, OA
 from models.PointCloudTransformer.losses import PointNetSegLoss
 
-# *************** Encoder: SPCT ******************
+############ OLD MODEL: BIG SEGMENTOR ############# 
 
+# *************** Encoder: SPCT ******************
 class SPCT_encoder(nn.Module):
   def __init__(self):
     super().__init__()
@@ -29,11 +30,8 @@ class SPCT_encoder(nn.Module):
     x3 = self.sa3(x2)
     x4 = self.sa4(x3)
     x = torch.cat([x, x1, x2, x3, x4], dim=1)   # 128 * 5 = 640
-
     return x
-
 # *************** Segmentation Head ***************
-
 class SegmentHead(nn.Module):
   def __init__(self, n_pts, args):
     super().__init__()
@@ -75,6 +73,22 @@ class SegmentHead(nn.Module):
     x4 = F.relu(self.bns4(self.convs4(x3)))
 
     return x4
+
+
+############## TINY SEGMENTOR ###############
+# encoder
+from models.PointCloudTransformer.model import SPCT
+# segmentor
+class BaseLearner(nn.Module):
+  def __init__(self):
+    super().__init__() 
+
+    self.convs1 = nn.Conv1d(64*2, 64, 1)
+    self.bns1 = nn.BatchNorm1d(64)
+  
+  def forward(self, x):
+    x = F.relu(self.bns1(self.convs1(x)))
+    return x
   
 # *************** Prototypical Networks with SPCT encoder and Segmentation Head ***************
     
@@ -89,8 +103,8 @@ class ProtoNetSPCT(nn.Module):
     self.use_attention = args.use_attention
     self.k = args.k_connect
 
-    self.encoder = SPCT_encoder()
-    self.segmentlearner = SegmentHead(self.n_points, args)
+    self.encoder = SPCT()
+    self.segmentlearner = BaseLearner()
     
   def forward(self, support_x, support_y, query_x, query_y):
     """
@@ -104,9 +118,9 @@ class ProtoNetSPCT(nn.Module):
     """
     # *************************** Prototypical Networks [Zhao Na work] *************************
     support_x = support_x.view(self.n_way*self.k_shot, self.in_channels, self.n_points)
-    support_feat = self.getFeatures(support_x, support_y.float())
+    support_feat = self.getFeatures(support_x)
     support_feat = support_feat.view(self.n_way, self.k_shot, -1, self.n_points)
-    query_feat = self.getFeatures(query_x, query_y.float())
+    query_feat = self.getFeatures(query_x)
 
     fg_mask = support_y
     bg_mask = torch.logical_not(support_y)
@@ -132,7 +146,19 @@ class ProtoNetSPCT(nn.Module):
 
     return query_pred, loss
 
-  def getFeatures(self, x, cls_lbl):
+  # feat extractor for tiny segmentor
+  def getFeatures(self, x):  
+    """
+    Forward the input data to network and generate features
+    :param x: input data with shape (B, C_in, L)
+    :return: features with shape (B, C_out, L)
+    """
+    x_cat, x = self.encoder(x)
+    feat = self.segmentlearner(x_cat)
+    return torch.cat([x, feat], dim=1) 
+
+  # old feature extraction:
+  def getFeatures_cls_lbl(self, x, cls_lbl):  
     """
     Forward the input data to network and generate features
     :param x: input data with shape (B, C_in, L)

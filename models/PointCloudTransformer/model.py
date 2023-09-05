@@ -44,16 +44,14 @@ class SPCT(nn.Module):
     super().__init__()
 
     # Note: change this to 3 from xyz, 6 for xyzrgb, and 9 for xyzrgbXYZ
-    self.embedding = Embedding(9, 128)
+    self.embedding = Embedding(9, 64)
 
-    self.sa1 = OA(128)
-    self.sa2 = OA(128)
-    self.sa3 = OA(128)
-    self.sa4 = OA(128)
+    self.sa1 = OA(64)
+    self.sa2 = OA(64)
 
     self.linear = nn.Sequential(
-      nn.Conv1d(512, 1024, kernel_size=1, bias=False),
-      nn.BatchNorm1d(1024),
+      nn.Conv1d(128, 64, kernel_size=1, bias=False),
+      nn.BatchNorm1d(64),
       nn.LeakyReLU(negative_slope=0.2)
     )
   
@@ -62,17 +60,10 @@ class SPCT(nn.Module):
     
     x1 = self.sa1(x)
     x2 = self.sa2(x1)
-    x3 = self.sa3(x2)
-    x4 = self.sa4(x3)
-    x = torch.cat([x1, x2, x3, x4], dim=1)
+    x_cat = torch.cat([x1, x2], dim=1)
+    x = self.linear(x_cat)
 
-    x = self.linear(x)
-
-    # x = F.adaptive_max_pool1d(x, 1).view(batch_size, -1)
-    x_max = torch.max(x, dim=-1)[0]
-    x_mean = torch.mean(x, dim=-1)
-
-    return x, x_max, x_mean
+    return x_cat, x
 
 class PCT(nn.Module):
   def __init__(self, samples=[512, 256]):
@@ -174,7 +165,23 @@ class Segmentation(nn.Module):
 
 # Note: This segmentation head does not require class_labels to propagate
 # Designed specifically for our work @fayjie
+class TinySegmentor(nn.Module):
+  def __init__(self, num_class):
+    super().__init__() 
+    self.num_class = num_class
 
+    self.convs1 = nn.Conv1d(64*2, 64, 1)
+    self.convs2 = nn.Conv1d(64, self.num_class, 1)
+    self.bns1 = nn.BatchNorm1d(64)
+  
+  def forward(self, x):
+    x = F.relu(self.bns1(self.convs1(x)))
+    x = self.convs2(x)
+
+    return x
+
+
+# old segmentation head with OA(128)
 class SegmentationHead(nn.Module):
   def __init__(self, num_class):
     super().__init__()
